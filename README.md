@@ -1,75 +1,42 @@
-# React + TypeScript + Vite
+# 🚀 Kurio — NFT Marketplace (Frontend Challenge)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+O **Kurio** é uma plataforma de marketplace de NFTs desenvolvida em React e TypeScript, focada na comercialização, descoberta e gestão de coleções digitais exclusivas. Este projeto foi construído como parte do desafio frontend, seguindo fielmente a identidade visual do Figma e os requisitos de arquitetura.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠️ Stack Tecnológica
 
-## React Compiler
+| Camada | Tecnologia |
+| :--- | :--- |
+| **Interface** | React 18 / 19 |
+| **Linguagem** | TypeScript |
+| **Estilização** | Tailwind CSS v4 & shadcn/ui |
+| **Roteamento** | TanStack Router |
+| **Estado Remoto** | TanStack Query (React Query) |
+| **Cliente HTTP** | Axios |
+| **Mocking de API** | MSW (Mock Service Worker) |
+| **Tempo Real** | Socket.IO (`@mswjs/socket.io-binding`) |
+| **Testes E2E** | Playwright |
+| **Build & Tooling** | Vite |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 📦 Funcionalidades Implementadas
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- 🖼️ **Catálogo de NFTs:** Listagem dinâmica com busca, filtros por categoria, ordenação e paginação sincronizados com a URL.
+- 🛒 **Carrinho de Compras:** Gestão em tempo real de itens, cálculo automático em ETH, suporte a cupons de desconto e persistência local.
+- 🔗 **Integração MSW & Socket.IO:** Simulação de rede REST e atualizações em tempo real para mudanças de preço e disponibilidade (`nft.updated`).
+- ⚡ **Performance & Acessibilidade:** Uso de Skeletons com efeito *shimmer*, navegação por teclado e otimização para auditoria Lighthouse.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## ⚙️ Como Executar o Projeto Localmente
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Pré-requisitos
+- Node.js (versão 18+ recomendada)
+- `npm` ou `pnpm`
 
-```
-
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
+### 1. Clonar o Repositório
+```bash
+git clone [https://github.com/teu-usuario/frontend-challenge.git](https://github.com/teu-usuario/frontend-challenge.git)
+cd frontend-challenge
