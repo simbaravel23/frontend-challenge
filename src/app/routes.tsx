@@ -1,50 +1,203 @@
-import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
+import { createRootRoute, createRoute, createRouter, Outlet, Link } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
+import { NFTCard } from '@/features/catalog/components/NFTCard';
+import { useCart } from '@/features/cart/context/CartContext';
+import { Button } from '@/components/ui/button';
 
-// Rota Raiz (Layout Base com o visual escuro do Kurio)
+interface NFT {
+  id: string;
+  name: string;
+  priceETH: string;
+  edition: string;
+  rarity: string;
+  imageUrl: string;
+  category: string;
+}
+
 export const rootRoute = createRootRoute({
-  component: () => (
-    <div className="min-h-screen bg-[#120E0C] text-white font-sans">
-      <header className="border-b border-[#342A24] px-6 py-4 flex items-center justify-between">
-        <h1 className="font-mono font-bold tracking-wider text-[#E28743]">KURIO</h1>
-        <nav className="flex gap-6 text-sm text-[#A19288]">
-          <a href="/" className="hover:text-white transition-colors">Início</a>
-          <a href="/cart" className="hover:text-white transition-colors">Carrinho</a>
-        </nav>
-      </header>
-      <main className="container mx-auto px-4 py-6">
-        <Outlet />
-      </main>
-    </div>
-  ),
+  component: () => {
+    const { cart } = useCart();
+
+    return (
+      <div className="min-h-screen bg-[#120E0C] text-[#A19288] font-sans">
+        {/* Header Fiel ao Figma */}
+        <header className="border-b border-[#342A24] px-8 py-5 flex items-center justify-between sticky top-0 bg-[#120E0C]/90 backdrop-blur-md z-50">
+          <Link to="/" className="font-mono font-bold tracking-widest text-white text-2xl">
+            KURIO
+          </Link>
+          <nav className="flex items-center gap-8 text-sm">
+            <Link to="/" className="hover:text-white transition-colors text-white font-medium">
+              Início
+            </Link>
+            <Link to="/cart" className="hover:text-white transition-colors flex items-center gap-2">
+              <span>Carrinho</span>
+              {cart.length > 0 && (
+                <span className="bg-[#E28743] text-[#120E0C] text-xs font-bold font-mono px-2 py-0.5 rounded-full">
+                  {cart.length}
+                </span>
+              )}
+            </Link>
+          </nav>
+        </header>
+
+        {/* Conteúdo Principal */}
+        <main className="max-w-7xl mx-auto px-8 py-10">
+          <Outlet />
+        </main>
+      </div>
+    );
+  },
 });
 
-// Rota do Catálogo / Início
+function CatalogPage() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['nfts'],
+    queryFn: async () => {
+      const response = await axios.get<{ data: NFT[] }>('/api/nfts');
+      return response.data.data;
+    },
+  });
+
+  if (isLoading) {
+    return <div className="text-center py-20 text-[#A19288] font-mono">A carregar marketplace...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center py-20 text-red-400 font-mono">Erro ao carregar os NFTs.</div>;
+  }
+
+  return (
+    <div className="space-y-10">
+      {/* Título e Subtítulo Figma */}
+      <div className="text-center space-y-2">
+        <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">Mercado de NFTs</h2>
+        <p className="text-sm text-[#A19288]">Descubra, colecione e negocie arte digital exclusiva.</p>
+      </div>
+
+      {/* Grid de Cards de NFT */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        {data?.map((nft) => (
+          <NFTCard key={nft.id} {...nft} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CartPage() {
+  const { cart, removeFromCart, clearCart, totalETH } = useCart();
+
+  if (cart.length === 0) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <h2 className="text-2xl font-bold text-white">O teu carrinho está vazio</h2>
+        <p className="text-[#A19288] text-sm">Explora o catálogo e escolhe os teus NFTs favoritos.</p>
+        <div className="pt-2">
+          <Link to="/">
+            <Button className="bg-[#E28743] hover:bg-[#c97435] text-[#120E0C] font-semibold cursor-pointer">
+              Explorar Marketplace
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8 max-w-4xl mx-auto">
+      <div className="flex justify-between items-end border-b border-[#342A24] pb-4">
+        <div>
+          <h2 className="text-3xl font-bold text-white tracking-tight">Carrinho de Compras</h2>
+          <p className="text-sm text-[#A19288] mt-1">Revisão dos itens selecionados para aquisição.</p>
+        </div>
+        <Button 
+          onClick={clearCart}
+          variant="outline"
+          className="text-xs border-[#342A24] text-[#A19288] hover:text-red-400 hover:border-red-900 bg-transparent cursor-pointer"
+        >
+          Esvaziar carrinho
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-4">
+          {cart.map((item) => (
+            <div 
+              key={item.id}
+              className="bg-[#1E1815] border border-[#342A24] rounded-xl p-4 flex items-center justify-between gap-4"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-lg bg-[#120E0C] border border-[#342A24] flex items-center justify-center overflow-hidden">
+                  <img 
+                    src={item.imageUrl} 
+                    alt={item.name} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+                <div>
+                  <h4 className="text-white font-semibold">{item.name}</h4>
+                  <span className="text-xs text-[#E28743] font-mono bg-[#E28743]/10 px-2 py-0.5 rounded">
+                    {item.rarity}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-6">
+                <span className="text-[#E28743] font-mono font-bold">{item.priceETH} ETH</span>
+                <Button 
+                  size="sm"
+                  onClick={() => removeFromCart(item.id)}
+                  className="bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-800 text-xs cursor-pointer"
+                >
+                  Remover
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-[#1E1815] border border-[#342A24] rounded-xl p-6 space-y-6 h-fit">
+          <h3 className="text-lg font-bold text-white border-b border-[#342A24] pb-3">Resumo da Ordem</h3>
+          
+          <div className="space-y-3 font-mono text-sm">
+            <div className="flex justify-between text-[#A19288]">
+              <span>Quantidade</span>
+              <span className="text-white">{cart.length} NFT(s)</span>
+            </div>
+            <div className="border-t border-[#342A24] pt-3 flex justify-between text-base font-bold">
+              <span className="text-white">Total</span>
+              <span className="text-[#E28743]">{totalETH} ETH</span>
+            </div>
+          </div>
+
+          <Button 
+            onClick={() => alert('Compra efetuada com sucesso!')}
+            className="w-full bg-[#E28743] hover:bg-[#c97435] text-[#120E0C] font-bold py-3 cursor-pointer"
+          >
+            Finalizar Compra
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: () => (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-white">Mercado de NFTs</h2>
-        <p className="text-sm text-[#A19288] mt-1">Descubra arte digital verificada na rede.</p>
-      </div>
-    </div>
-  ),
+  component: CatalogPage,
 });
 
-// Rota do Carrinho
 export const cartRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/cart',
-  component: () => (
-    <div>
-      <h2 className="text-2xl font-bold text-white">Carrinho de NFTs</h2>
-      <p className="text-sm text-[#A19288] mt-1">Revezamento e finalização de compras.</p>
-    </div>
-  ),
+  component: CartPage,
 });
 
-// Árvore de rotas
 const routeTree = rootRoute.addChildren([indexRoute, cartRoute]);
 
 export const router = createRouter({ routeTree });
