@@ -10,7 +10,7 @@ export const mockNFTs = [
     edition: '1/50',
     rarity: 'Raro',
     category: 'Arte digital',
-    imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop',
+    imageUrl: 'mac.jpeg',
     creator: 'Kurio Official',
     owner: 'Galeria Kurio',
   },
