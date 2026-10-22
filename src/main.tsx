@@ -25,14 +25,13 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
-// Inicializa o MSW em ambiente de desenvolvimento
+
+// Inicializa o MSW independentemente de ser dev ou produção (ideal para SPAs baseadas em mocks)
 async function enableMocking() {
-  if (import.meta.env.DEV) {
-    const { worker } = await import('./mocks/browser');
-    return worker.start({
-      onUnhandledFrame: 'bypass',
-    });
-  }
+  const { worker } = await import('./mocks/browser');
+  return worker.start({
+    onUnhandledFrame: 'bypass',
+  });
 }
 
 const queryClient = new QueryClient();
