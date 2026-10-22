@@ -5,45 +5,81 @@ export const mockNFTs = [
   {
     id: 'emerald-ape-042',
     name: 'Emerald Ape #042',
-    description: 'Arte digital exclusiva registada na rede Kurio, garantindo proveniência e propriedade digital autêntica.',
+    description: 'Arte digital exclusiva registada na rede Kurio.',
     priceETH: '1.19',
     edition: '1/50',
     rarity: 'Raro',
     category: 'Arte digital',
-    imageUrl: 'https://placehold.co/600x600/1E1815/E28743?text=Emerald+Ape+#042',
+    imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop',
     creator: 'Kurio Official',
     owner: 'Galeria Kurio',
   },
   {
     id: 'sage-nomad-009',
     name: 'Sage Nomad #009',
-    description: 'Personagem lendário da coleção Nomad, com detalhes e acabamento vetorial de alta definição.',
+    description: 'Personagem lendário da coleção Nomad.',
     priceETH: '1.69',
     edition: '1/10',
     rarity: 'Épico',
     category: 'Arte digital',
-    imageUrl: 'https://placehold.co/600x600/1E1815/E28743?text=Sage+Nomad+#009',
+    imageUrl: 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=600&auto=format&fit=crop',
     creator: 'Kurio Official',
     owner: 'Galeria Kurio',
   },
   {
     id: 'neon-vessel-552',
     name: 'Neon Vessel #552',
-    description: 'Composição áudio-visual futurista inspirada em sintetizadores e soundscapes espaciais.',
+    description: 'Composição áudio-visual futurista.',
     priceETH: '1.99',
     edition: '1/100',
     rarity: 'Comum',
     category: 'Música',
-    imageUrl: 'https://placehold.co/600x600/1E1815/E28743?text=Neon+Vessel+#552',
+    imageUrl: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=600&auto=format&fit=crop',
     creator: 'Kurio Official',
     owner: 'Galeria Kurio',
   },
 ];
 
 export const handlers = [
-  // Endpoint para listar todos os NFTs
-  http.get('/api/nfts', () => {
-    return HttpResponse.json({ data: mockNFTs });
+  // Endpoint para listar NFTs com suporte a busca, filtros e ordenação
+  http.get('/api/nfts', ({ request }) => {
+    const url = new URL(request.url);
+    const search = url.searchParams.get('search')?.toLowerCase() || '';
+    const category = url.searchParams.get('category') || '';
+    const rarity = url.searchParams.get('rarity') || '';
+    const sort = url.searchParams.get('sort') || '';
+
+    let filtered = [...mockNFTs];
+
+    // Filtro por busca de nome
+    if (search) {
+      filtered = filtered.filter((nft) =>
+        nft.name.toLowerCase().includes(search)
+      );
+    }
+
+    // Filtro por categoria
+    if (category && category !== 'all') {
+      filtered = filtered.filter(
+        (nft) => nft.category.toLowerCase() === category.toLowerCase()
+      );
+    }
+
+    // Filtro por raridade
+    if (rarity && rarity !== 'all') {
+      filtered = filtered.filter(
+        (nft) => nft.rarity.toLowerCase() === rarity.toLowerCase()
+      );
+    }
+
+    // Ordenação por preço
+    if (sort === 'price-asc') {
+      filtered.sort((a, b) => parseFloat(a.priceETH) - parseFloat(b.priceETH));
+    } else if (sort === 'price-desc') {
+      filtered.sort((a, b) => parseFloat(b.priceETH) - parseFloat(a.priceETH));
+    }
+
+    return HttpResponse.json({ data: filtered });
   }),
 
   // Endpoint para buscar os detalhes de um NFT por ID
