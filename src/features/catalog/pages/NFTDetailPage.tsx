@@ -33,6 +33,7 @@ export function NFTDetailPage() {
 
   const { data: nft, isLoading, error } = useQuery({
     queryKey: ['nft', id],
+    retry: false,
     queryFn: async () => {
       const response = await axios.get<{ data: NFTDetail }>(`/api/nfts/${id}`);
       return response.data.data;

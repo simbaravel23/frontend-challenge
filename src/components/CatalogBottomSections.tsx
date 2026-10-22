@@ -1,28 +1,9 @@
-import { Button } from '@/components/ui/button';
+import { Link } from '@tanstack/react-router';
 
 export function CatalogBottomSections() {
   return (
     <div className="space-y-16 mt-12">
-      {/* 1. PAGINAÇÃO (Direita) */}
-      <div className="flex justify-end items-center gap-2 font-mono text-xs">
-        <button className="w-8 h-8 rounded bg-[#E28743] text-[#120E0C] font-bold flex items-center justify-center">
-          1
-        </button>
-        <button className="w-8 h-8 rounded bg-[#1E1815] border border-[#342A24] text-[#A19288] hover:text-white flex items-center justify-center">
-          2
-        </button>
-        <button className="w-8 h-8 rounded bg-[#1E1815] border border-[#342A24] text-[#A19288] hover:text-white flex items-center justify-center">
-          3
-        </button>
-        <button className="w-8 h-8 rounded bg-[#1E1815] border border-[#342A24] text-[#A19288] hover:text-white flex items-center justify-center">
-          4
-        </button>
-        <button className="w-8 h-8 rounded bg-[#1E1815] border border-[#342A24] text-[#A19288] hover:text-white flex items-center justify-center">
-          &gt;
-        </button>
-      </div>
-
-      {/* 2. BANNERS DE DESTAQUE EDITORIAL (Dois Cards Horizontais) */}
+      {/* Banners de destaque */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Card Promo 1 */}
         <div className="bg-[#1E1815] border border-[#342A24] rounded-2xl overflow-hidden flex flex-col sm:flex-row items-center">
@@ -36,9 +17,9 @@ export function CatalogBottomSections() {
             <p className="text-xs text-[#A19288] leading-relaxed">
               Colecione edições escassas diretamente dos criadores antes da revelação pública.
             </p>
-            <Button className="bg-[#E28743] hover:bg-[#c97435] text-[#120E0C] font-bold text-xs px-4 py-2 cursor-pointer mt-2">
-              Explorar →
-            </Button>
+            <Link to="/" search={{ category: 'Colecionáveis', page: 1 }} className="mt-2 inline-flex rounded-lg bg-[#E28743] px-4 py-2 text-xs font-bold text-[#120E0C] hover:bg-[#c97435] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E28743]">
+              Explorar coleção →
+            </Link>
           </div>
         </div>
 
@@ -54,14 +35,14 @@ export function CatalogBottomSections() {
             <p className="text-xs text-[#A19288] leading-relaxed">
               Explore novos artistas, coleções verificadas e obras digitais que definem a rede.
             </p>
-            <Button className="bg-[#E28743] hover:bg-[#c97435] text-[#120E0C] font-bold text-xs px-4 py-2 cursor-pointer mt-2">
-              Explorar →
-            </Button>
+            <Link to="/" search={{ category: 'Arte digital', page: 1 }} className="mt-2 inline-flex rounded-lg bg-[#E28743] px-4 py-2 text-xs font-bold text-[#120E0C] hover:bg-[#c97435] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E28743]">
+              Explorar coleção →
+            </Link>
           </div>
         </div>
       </div>
 
-      {/* 3. DIÁRIO DA CUNHAGEM (Artigos do Blog) */}
+      {/* Conteúdo informativo sem navegação para páginas fora do escopo */}
       <div className="space-y-8">
         <div className="text-center space-y-2">
           <h2 className="text-2xl font-bold text-white tracking-tight font-mono">
@@ -102,9 +83,7 @@ export function CatalogBottomSections() {
               <span className="text-[10px] font-mono text-[#A19288] block">{article.date}</span>
               <h4 className="text-white font-bold text-sm leading-snug">{article.title}</h4>
               <p className="text-xs text-[#A19288] line-clamp-2">{article.desc}</p>
-              <a href="#" className="text-[#E28743] text-xs font-mono hover:underline block pt-1">
-                Ler mais →
-              </a>
+              <span className="block pt-1 font-mono text-xs text-[#A19288]">Informação demonstrativa</span>
             </div>
           ))}
         </div>

@@ -47,14 +47,15 @@ export function Footer() {
               <input
                 type="email"
                 placeholder="digite seu e-mail..."
+                aria-label="E-mail para newsletter"
                 className="w-full bg-[#1E1815] border border-[#342A24] text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-[#E28743] font-mono placeholder-[#A19288]"
               />
-              <Button className="bg-[#E28743] hover:bg-[#c97435] text-[#120E0C] font-bold text-xs px-4 py-2 cursor-pointer">
+              <Button disabled title="Newsletter indisponível na simulação" className="bg-[#E28743] text-[#120E0C] font-bold text-xs px-4 py-2 cursor-not-allowed">
                 Enviar
               </Button>
             </div>
             <p className="text-[11px] text-[#A19288]">
-              Receba lançamentos selecionados, histórias de criadores e novidades do mercado.
+              Inscrição na newsletter indisponível na simulação.
             </p>
           </div>
         </div>
@@ -79,10 +80,10 @@ export function Footer() {
           <h5 className="text-white font-bold border-b border-[#342A24] pb-2">Meu perfil</h5>
           <ul className="space-y-2 text-[#A19288]">
             <li><Link to="/profile" className="hover:text-white transition-colors">Meu perfil</Link></li>
-            <li><a href="#" className="hover:text-white transition-colors">Minha coleção</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Atividade</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Estúdio do criador</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Lista de interesse</a></li>
+            <li><span>Minha coleção (fora do escopo)</span></li>
+            <li><span>Atividade (fora do escopo)</span></li>
+            <li><span>Estúdio do criador (fora do escopo)</span></li>
+            <li><span>Lista de interesse (fora do escopo)</span></li>
           </ul>
         </div>
 
@@ -90,11 +91,11 @@ export function Footer() {
         <div className="space-y-3">
           <h5 className="text-white font-bold border-b border-[#342A24] pb-2">Central de ajuda</h5>
           <ul className="space-y-2 text-[#A19288]">
-            <li><a href="#" className="hover:text-white transition-colors">Central de ajuda</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Como comprar NFTs</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Carteira e segurança</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Política do mercado</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Denunciar item</a></li>
+            <li><span>Central de ajuda (fora do escopo)</span></li>
+            <li><span>Como comprar NFTs (fora do escopo)</span></li>
+            <li><span>Carteira e segurança (fora do escopo)</span></li>
+            <li><span>Política do mercado (fora do escopo)</span></li>
+            <li><span>Denunciar item (fora do escopo)</span></li>
           </ul>
         </div>
 
@@ -102,11 +103,11 @@ export function Footer() {
         <div className="space-y-3">
           <h5 className="text-white font-bold border-b border-[#342A24] pb-2">Coleções</h5>
           <ul className="space-y-2 text-[#A19288]">
-            <li><a href="#" className="hover:text-white transition-colors">Arte digital</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Fotografia</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Música</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Arte 3D</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Utilidade</a></li>
+            <li><Link to="/" search={{ category: 'Arte digital', page: 1 }} className="hover:text-white">Arte digital</Link></li>
+            <li><Link to="/" search={{ category: 'Fotografia', page: 1 }} className="hover:text-white">Fotografia</Link></li>
+            <li><Link to="/" search={{ category: 'Música', page: 1 }} className="hover:text-white">Música</Link></li>
+            <li><Link to="/" search={{ category: 'Arte 3D', page: 1 }} className="hover:text-white">Arte 3D</Link></li>
+            <li><Link to="/" search={{ category: 'Utilidade', page: 1 }} className="hover:text-white">Utilidade</Link></li>
           </ul>
         </div>
 
@@ -116,13 +117,13 @@ export function Footer() {
             <h5 className="text-white font-bold border-b border-[#342A24] pb-2">Redes sociais</h5>
             <div className="flex items-center gap-3">
               {['f', 'ig', 'tw', 'in', 'yt'].map((social) => (
-                <a
+                <span
                   key={social}
-                  href="#"
-                  className="w-7 h-7 rounded bg-[#1E1815] border border-[#342A24] text-white flex items-center justify-center hover:border-[#E28743] hover:text-[#E28743] transition-colors"
+                  aria-label={`${social} indisponível`}
+                  className="w-7 h-7 rounded bg-[#1E1815] border border-[#342A24] text-white flex items-center justify-center"
                 >
                   {social}
-                </a>
+                </span>
               ))}
             </div>
           </div>
