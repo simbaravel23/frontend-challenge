@@ -120,6 +120,12 @@ const orders = new Map<string, { request: OrderRequest; order: Record<string, un
 const ordersByIdempotencyKey = new Map<string, string>();
 const timedOutOrderKeys = new Set<string>();
 const finalizedOrders = new Set<string>();
+const persistedOrderKey = (id: string) => `kurio_mock_order_${id}`;
+
+function persistOrder(id: string): void {
+  const record = orders.get(id);
+  if (record) window.localStorage.setItem(persistedOrderKey(id), JSON.stringify(record));
+}
 
 function getUser(request: Request): MockUser | undefined {
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
@@ -493,6 +499,7 @@ export const handlers = [
       if (existing.order.status === 'pending') {
         existing.order.status = 'confirmed';
         finalizeOrder(existingId);
+        persistOrder(existingId);
       }
       return HttpResponse.json({ order: existing.order });
     }
@@ -541,16 +548,38 @@ export const handlers = [
 
     if (scenario === 'timeout-after-create' && !timedOutOrderKeys.has(key)) {
       timedOutOrderKeys.add(key);
+      persistOrder(id);
       return HttpResponse.json({ message: 'Tempo limite após criação; repita com a mesma chave.' }, { status: 504 });
     }
     finalizeOrder(id);
+    persistOrder(id);
     return HttpResponse.json({ order });
   }),
 
   http.get('/api/orders/:id', ({ params, request }) => {
     const user = getUser(request);
     if (!user) return unauthorized();
-    const record = orders.get(String(params.id));
+    const id = String(params.id);
+    let record = orders.get(id);
+    if (!record) {
+      const serialized = window.localStorage.getItem(persistedOrderKey(id));
+      if (serialized) {
+        const parsed: unknown = JSON.parse(serialized);
+        if (
+          typeof parsed === 'object'
+          && parsed !== null
+          && 'request' in parsed
+          && 'order' in parsed
+          && typeof parsed.request === 'object'
+          && parsed.request !== null
+          && typeof parsed.order === 'object'
+          && parsed.order !== null
+        ) {
+          record = parsed as { request: OrderRequest; order: Record<string, unknown> };
+          orders.set(id, record);
+        }
+      }
+    }
     if (!record || record.order.userId !== user.id) return HttpResponse.json({ message: 'Pedido não encontrado.' }, { status: 404 });
     return HttpResponse.json({ order: record.order });
   }),

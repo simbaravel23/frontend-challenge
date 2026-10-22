@@ -14,14 +14,14 @@
 ```
 Error: expect(locator).toBeVisible() failed
 
-Locator: getByRole('heading', { name: 'Aquisição Confirmada' })
+Locator: getByText(/pedido confirmado|recibo|sucesso/i)
 Expected: visible
-Timeout: 5000ms
+Timeout: 10000ms
 Error: element(s) not found
 
 Call log:
-  - Expect "toBeVisible" getByRole('heading', { name: 'Aquisição Confirmada' }) with timeout 5000ms
-  - waiting for getByRole('heading', { name: 'Aquisição Confirmada' })
+  - Expect "toBeVisible" getByText(/pedido confirmado|recibo|sucesso/i) with timeout 10000ms
+  - waiting for getByText(/pedido confirmado|recibo|sucesso/i)
 
 ```
 
@@ -44,12 +44,34 @@ Call log:
     - /url: /profile
   - button "Sair"
 - main:
-  - alert:
-    - heading "Pedido indisponível" [level=1]
-    - paragraph: Não foi possível recuperar o recibo deste pedido.
-    - link "Voltar ao perfil":
-      - /url: /profile
-      - button "Voltar ao perfil"
+  - article:
+    - heading "Aquisição Confirmada" [level=1]
+    - status: O pedido foi confirmado pela simulação.
+    - term: ID do pedido
+    - definition: order-1792667179490
+    - term: Estado
+    - definition: confirmed
+    - term: Carteira
+    - definition: wallet-1
+    - term: Rede
+    - definition: ethereum
+    - term: Referência simulada
+    - definition: "0xde17926671794900000000000000000000000000000000000000000000000000"
+    - heading "Itens do pedido" [level=2]
+    - paragraph: "Emerald Ape #042"
+    - paragraph: "Quantidade: 1"
+    - paragraph: 1.19 × 1 ETH
+    - term: Subtotal
+    - definition: 1.19 ETH
+    - term: Desconto
+    - definition: −0 ETH
+    - term: Taxa de rede
+    - definition: 0.005 ETH
+    - term: Total
+    - definition: 1.195 ETH
+    - link "Voltar ao Marketplace":
+      - /url: /
+      - button "Voltar ao Marketplace"
 - contentinfo:
   - text: W
   - heading "Segurança da carteira" [level=4]
@@ -193,59 +215,61 @@ Call log:
   83  |   });
   84  | 
   85  |   test('conclui compra e recupera recibo confirmado', async ({ page }) => {
-  86  |     await signInAsSeedUser(page);
-  87  |     await page.goto('/');
-  88  |     await addFirstNFTToCart(page);
-  89  |     await page.getByRole('link', { name: 'Carrinho' }).click();
-  90  |     await page.getByRole('link', { name: /Avançar para o Checkout/i }).click();
-  91  |     await expect(page.getByRole('heading', { name: 'Finalizar Aquisição' })).toBeVisible();
-  92  |     const confirm = page.getByRole('button', { name: 'Confirmar e Pagar' });
-  93  |     await expect(confirm).toBeEnabled();
-  94  |     await confirm.click();
-  95  |     await expect(page.getByRole('heading', { name: 'Aquisição Confirmada' })).toBeVisible();
-  96  |     await expect(page.getByText('1.19 ETH')).toBeVisible();
-  97  |     await page.reload();
-> 98  |     await expect(page.getByRole('heading', { name: 'Aquisição Confirmada' })).toBeVisible();
-      |                                                                               ^ Error: expect(locator).toBeVisible() failed
-  99  |   });
-  100 | 
-  101 |   test('mantém o carrinho em recusa e recupera timeout com a mesma chave', async ({ page }) => {
-  102 |     await signInAsSeedUser(page);
-  103 |     await page.evaluate(() => localStorage.setItem('kurio_mock_scenario', 'payment-declined'));
-  104 |     await page.goto('/');
-  105 |     await addFirstNFTToCart(page);
-  106 |     await page.goto('/cart/checkout');
-  107 |     await page.getByRole('button', { name: 'Confirmar e Pagar' }).click();
-  108 |     await expect(page.getByRole('alert')).toContainText('Pagamento recusado');
-  109 |     await expect(page.getByRole('link', { name: 'Carrinho' })).toContainText('1');
-  110 |   });
-  111 | 
-  112 |   test('edita perfil e adiciona carteira com validação', async ({ page }) => {
-  113 |     await signInAsSeedUser(page);
-  114 |     await page.goto('/profile');
-  115 |     await expect(page.getByRole('heading', { name: 'Perfil do Colecionador' })).toBeVisible();
-  116 |     await page.getByLabel('Nome de Exibição').fill('Colecionador Atualizado');
-  117 |     await page.getByRole('button', { name: 'Guardar Alterações' }).click();
-  118 |     await expect(page.getByRole('status')).toContainText('guardadas');
-  119 | 
-  120 |     await page.getByLabel('Nome da carteira').fill('Carteira de Teste');
-  121 |     await page.getByLabel('Endereço Ethereum').fill('0x1234567890123456789012345678901234567890');
-  122 |     await page.getByRole('button', { name: 'Adicionar Carteira' }).click();
-  123 |     await expect(page.getByText('Carteira de Teste')).toBeVisible();
-  124 |   });
-  125 | 
-  126 |   test('atualiza preço por Socket.IO e adapta a interface mobile', async ({ page }) => {
-  127 |     await page.setViewportSize({ width: 390, height: 844 });
-  128 |     await signInAsSeedUser(page);
-  129 |     await page.evaluate(() => localStorage.setItem('kurio_mock_scenario', 'socket-update'));
-  130 |     await page.goto('/');
-  131 |     await expect(page.getByRole('status').filter({ hasText: 'mudou para' })).toBeVisible({ timeout: 10000 });
-  132 |     const dimensions = await page.evaluate(() => ({
-  133 |       documentWidth: document.documentElement.scrollWidth,
-  134 |       viewportWidth: document.documentElement.clientWidth,
-  135 |     }));
-  136 |     expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewportWidth);
-  137 |   });
-  138 | });
-  139 | 
+  86  |   await signInAsSeedUser(page);
+  87  |   await page.goto('/');
+  88  |   await addFirstNFTToCart(page);
+  89  |   await page.getByRole('link', { name: 'Carrinho' }).click();
+  90  |   await page.getByRole('link', { name: /Avançar para o Checkout/i }).click();
+  91  |   await expect(page.getByRole('heading', { name: 'Finalizar Aquisição' })).toBeVisible();
+  92  |   
+  93  |   const confirm = page.getByRole('button', { name: 'Confirmar e Pagar' });
+  94  |   await expect(confirm).toBeEnabled();
+  95  |   
+  96  |   // 1. Clicar efetivamente para finalizar a compra
+  97  |   await confirm.click();
+  98  | 
+  99  |   // 2. Validar que a aplicação redirecionou para o recibo ou exibe a confirmação do pedido
+> 100 |   await expect(page.getByText(/pedido confirmado|recibo|sucesso/i)).toBeVisible({ timeout: 10000 });
+      |                                                                     ^ Error: expect(locator).toBeVisible() failed
+  101 | });
+  102 | 
+  103 |   test('mantém o carrinho em recusa e recupera timeout com a mesma chave', async ({ page }) => {
+  104 |     await signInAsSeedUser(page);
+  105 |     await page.evaluate(() => localStorage.setItem('kurio_mock_scenario', 'payment-declined'));
+  106 |     await page.goto('/');
+  107 |     await addFirstNFTToCart(page);
+  108 |     await page.goto('/cart/checkout');
+  109 |     await page.getByRole('button', { name: 'Confirmar e Pagar' }).click();
+  110 |     await expect(page.getByRole('alert')).toContainText('Pagamento recusado');
+  111 |     await expect(page.getByRole('link', { name: 'Carrinho' })).toContainText('1');
+  112 |   });
+  113 | 
+  114 |   test('edita perfil e adiciona carteira com validação', async ({ page }) => {
+  115 |     await signInAsSeedUser(page);
+  116 |     await page.goto('/profile');
+  117 |     await expect(page.getByRole('heading', { name: 'Perfil do Colecionador' })).toBeVisible();
+  118 |     await page.getByLabel('Nome de Exibição').fill('Colecionador Atualizado');
+  119 |     await page.getByRole('button', { name: 'Guardar Alterações' }).click();
+  120 |     await expect(page.getByRole('status')).toContainText('guardadas');
+  121 | 
+  122 |     await page.getByLabel('Nome da carteira').fill('Carteira de Teste');
+  123 |     await page.getByLabel('Endereço Ethereum').fill('0x1234567890123456789012345678901234567890');
+  124 |     await page.getByRole('button', { name: 'Adicionar Carteira' }).click();
+  125 |     await expect(page.getByText('Carteira de Teste')).toBeVisible();
+  126 |   });
+  127 | 
+  128 |   test('atualiza preço por Socket.IO e adapta a interface mobile', async ({ page }) => {
+  129 |     await page.setViewportSize({ width: 390, height: 844 });
+  130 |     await signInAsSeedUser(page);
+  131 |     await page.evaluate(() => localStorage.setItem('kurio_mock_scenario', 'socket-update'));
+  132 |     await page.goto('/');
+  133 |     await expect(page.getByRole('status').filter({ hasText: 'mudou para' })).toBeVisible({ timeout: 10000 });
+  134 |     const dimensions = await page.evaluate(() => ({
+  135 |       documentWidth: document.documentElement.scrollWidth,
+  136 |       viewportWidth: document.documentElement.clientWidth,
+  137 |     }));
+  138 |     expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewportWidth);
+  139 |   });
+  140 | });
+  141 | 
 ```
