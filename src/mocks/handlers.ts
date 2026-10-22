@@ -184,6 +184,14 @@ function createQuote(subtotalETH: string, coupon = '') {
   };
 }
 
+function compareNFTPrices(priceA: string, priceB: string): number {
+  const comparison = new BigNumber(priceA).comparedTo(priceB);
+  if (comparison === null) {
+    throw new Error('Cannot sort NFTs with invalid prices.');
+  }
+  return comparison;
+}
+
 function finalizeOrder(orderId: string): void {
   if (finalizedOrders.has(orderId)) return;
   const record = orders.get(orderId);
@@ -230,9 +238,9 @@ export const handlers = [
     });
 
     if (sort === 'price-asc') {
-      filtered = filtered.toSorted((a, b) => new BigNumber(a.priceETH).comparedTo(b.priceETH));
+      filtered = filtered.toSorted((a, b) => compareNFTPrices(a.priceETH, b.priceETH));
     } else if (sort === 'price-desc') {
-      filtered = filtered.toSorted((a, b) => new BigNumber(b.priceETH).comparedTo(a.priceETH));
+      filtered = filtered.toSorted((a, b) => compareNFTPrices(b.priceETH, a.priceETH));
     } else if (sort === 'name-asc') {
       filtered = filtered.toSorted((a, b) => a.name.localeCompare(b.name));
     }
