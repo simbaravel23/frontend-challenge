@@ -22,6 +22,7 @@ export const socketHandlers = [
       );
     }, 15000);
 
+   // @ts-expect-error - Ignora restrição de tipo interna do MSW para socket.io
     client.addEventListener('disconnect', () => {
       clearInterval(interval);
       console.log('[MSW Socket.IO] Cliente desconectado');

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { useCart } from '@/features/cart/context/CartContext';
@@ -15,8 +15,6 @@ interface Wallet {
 
 export function CheckoutPage() {
   const { cart, clearCart } = useCart();
-  const navigate = useNavigate();
-
   const [selectedWallet, setSelectedWallet] = useState<string>('wallet-1');
   const [network, setNetwork] = useState<string>('ethereum');
   const [coupon, setCoupon] = useState<string>('');
