@@ -21,6 +21,7 @@ function emitNFTUpdate(server: ReturnType<typeof toSocketIo>['server'], updateVe
 
 export const socketHandlers = [
   socketServer.addEventListener('connection', (connection) => {
+    console.info('[socket mock] connected', connection.info.url);
     const { server } = toSocketIo(connection);
     server.on('mock.trigger', (_event, scenario: string) => {
       if (scenario === 'socket-update') {

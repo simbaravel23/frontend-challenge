@@ -29,6 +29,8 @@ axios.interceptors.request.use((config) => {
 // Inicializa o MSW independentemente de ser dev ou produção (ideal para SPAs baseadas em mocks)
 async function enableMocking() {
   const { worker } = await import('./mocks/browser');
+  worker.events.on('websocket:connection', (event) => console.info('[MSW ws frame]', event.url.toString()));
+  worker.events.on('websocket:error', (event) => console.error('[MSW ws error]', event.error));
   return worker.start({
     onUnhandledRequest: 'bypass',
   });
