@@ -1,12 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const token = 'mock-jwt-token-kurio-123';
-
 async function signInAsSeedUser(page: Page) {
-  await page.addInitScript((authToken) => {
-    window.localStorage.setItem('kurio_token', authToken);
-    window.localStorage.setItem('kurio_user_id', 'user-1');
-  }, token);
+  await page.goto('/login');
+  const form = page.getByRole('main');
+  await form.getByLabel('E-mail', { exact: true }).fill('colecionador@kurio.io');
+  await form.getByLabel('Senha', { exact: true }).fill('kurio123');
+  await form.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Sair', exact: true })).toBeVisible();
 }
 
 async function addFirstNFTToCart(page: Page) {
@@ -58,22 +58,23 @@ test.describe('Kurio Marketplace — fluxos principais', () => {
 
   test('realiza login com credenciais fictícias e encerra a sessão', async ({ page }) => {
     await page.goto('/login');
-    await page.getByLabel('E-mail').fill('colecionador@kurio.io');
-    await page.getByLabel('Senha').fill('senha-incorreta');
-    await page.getByRole('main').getByRole('button', { name: 'Entrar', exact: true }).click();
+    const form = page.getByRole('main');
+    await form.getByLabel('E-mail', { exact: true }).fill('colecionador@kurio.io');
+    await form.getByLabel('Senha', { exact: true }).fill('senha-incorreta');
+    await form.getByRole('button', { name: 'Entrar', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText('inválidos');
 
-    await page.getByLabel('Senha').fill('kurio123');
-    await page.getByRole('main').getByRole('button', { name: 'Entrar', exact: true }).click();
-    await expect(page).toHaveURL('/');
-    await expect(page.getByRole('link', { name: 'Perfil' })).toBeVisible();
+    await form.getByLabel('Senha', { exact: true }).fill('kurio123');
+    await form.getByRole('button', { name: 'Entrar', exact: true }).click();
+    await expect(page).toHaveURL(/\/(?:\?.*)?$/);
+    await expect(page.getByRole('button', { name: 'Sair', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Sair' }).click();
-    await expect(page.getByRole('link', { name: 'Entrar' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Entrar', exact: true })).toBeVisible();
   });
 
   test('faz rollback de favorito quando a API falha', async ({ page }) => {
     await signInAsSeedUser(page);
-    await page.addInitScript(() => localStorage.setItem('kurio_mock_scenario', 'favorite-error'));
+    await page.evaluate(() => localStorage.setItem('kurio_mock_scenario', 'favorite-error'));
     await page.goto('/');
     const favorite = page.getByRole('button', { name: 'Adicionar Emerald Ape #042 aos favoritos' });
     await favorite.click();
@@ -99,7 +100,7 @@ test.describe('Kurio Marketplace — fluxos principais', () => {
 
   test('mantém o carrinho em recusa e recupera timeout com a mesma chave', async ({ page }) => {
     await signInAsSeedUser(page);
-    await page.addInitScript(() => localStorage.setItem('kurio_mock_scenario', 'payment-declined'));
+    await page.evaluate(() => localStorage.setItem('kurio_mock_scenario', 'payment-declined'));
     await page.goto('/');
     await addFirstNFTToCart(page);
     await page.goto('/cart/checkout');
@@ -124,7 +125,8 @@ test.describe('Kurio Marketplace — fluxos principais', () => {
 
   test('atualiza preço por Socket.IO e adapta a interface mobile', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.addInitScript(() => localStorage.setItem('kurio_mock_scenario', 'socket-update'));
+    await signInAsSeedUser(page);
+    await page.evaluate(() => localStorage.setItem('kurio_mock_scenario', 'socket-update'));
     await page.goto('/');
     await expect(page.getByRole('status').filter({ hasText: 'mudou para' })).toBeVisible({ timeout: 10000 });
     const dimensions = await page.evaluate(() => ({
