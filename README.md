@@ -40,3 +40,7 @@ O **Kurio** é uma plataforma de marketplace de NFTs desenvolvida em React e Typ
 ```bash
 git clone [https://github.com/simbaravel23/frontend-challenge.git](https://github.com/simbaravel23/frontend-challenge.git)
 cd frontend-challenge
+
+### 2. Instalar Dependências
+```bash
+npm install --legacy-peer-deps
