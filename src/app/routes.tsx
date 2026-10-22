@@ -4,6 +4,8 @@ import axios from 'axios';
 import { NFTCard } from '@/features/catalog/components/NFTCard';
 import { useCart } from '@/features/cart/context/CartContext';
 import { Button } from '@/components/ui/button';
+import { NFTDetailPage } from '@/features/catalog/pages/NFTDetailPage';
+import { LoginPage } from '@/features/auth/pages/LoginPage';
 
 interface NFT {
   id: string;
@@ -18,6 +20,7 @@ interface NFT {
 export const rootRoute = createRootRoute({
   component: () => {
     const { cart } = useCart();
+    const token = typeof window !== 'undefined' ? localStorage.getItem('kurio_token') : null;
 
     return (
       <div className="min-h-screen bg-[#120E0C] text-[#A19288] font-sans">
@@ -38,6 +41,15 @@ export const rootRoute = createRootRoute({
                 </span>
               )}
             </Link>
+            {token ? (
+              <span className="text-xs font-mono text-[#E28743] bg-[#E28743]/10 px-3 py-1 rounded-full border border-[#E28743]/30">
+                ● Conectado
+              </span>
+            ) : (
+              <Link to="/login" className="text-xs font-mono text-[#E28743] hover:underline">
+                Entrar
+              </Link>
+            )}
           </nav>
         </header>
 
@@ -69,13 +81,11 @@ function CatalogPage() {
 
   return (
     <div className="space-y-10">
-      {/* Título e Subtítulo Figma */}
       <div className="text-center space-y-2">
         <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">Mercado de NFTs</h2>
         <p className="text-sm text-[#A19288]">Descubra, colecione e negocie arte digital exclusiva.</p>
       </div>
 
-      {/* Grid de Cards de NFT */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {data?.map((nft) => (
           <NFTCard key={nft.id} {...nft} />
@@ -186,6 +196,7 @@ function CartPage() {
   );
 }
 
+// Declaração de todas as rotas
 export const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
@@ -198,7 +209,20 @@ export const cartRoute = createRoute({
   component: CartPage,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, cartRoute]);
+export const nftDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/nfts/$id',
+  component: NFTDetailPage,
+});
+
+export const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  component: LoginPage,
+});
+
+// Construção única da árvore de rotas
+const routeTree = rootRoute.addChildren([indexRoute, cartRoute, nftDetailRoute, loginRoute]);
 
 export const router = createRouter({ routeTree });
 

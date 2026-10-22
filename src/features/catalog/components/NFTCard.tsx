@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/features/cart/context/CartContext';
 
@@ -15,7 +16,8 @@ export function NFTCard({ id, name, priceETH, edition, rarity, imageUrl, categor
   const { cart, addToCart, removeFromCart } = useCart();
   const isInCart = cart.some((item) => item.id === id);
 
-  const handleToggleCart = () => {
+  const handleToggleCart = (e: React.MouseEvent) => {
+    e.preventDefault(); // Evita conflitos com o Link do Router
     if (isInCart) {
       removeFromCart(id);
     } else {
@@ -25,22 +27,17 @@ export function NFTCard({ id, name, priceETH, edition, rarity, imageUrl, categor
 
   return (
     <div className="bg-[#1E1815] border border-[#342A24] rounded-xl overflow-hidden shadow-lg hover:border-[#E28743] transition-all group flex flex-col justify-between">
-      <div>
-        {/* Imagem do NFT com fallback visual */}
+      {/* Link que redireciona para a página de Detalhes */}
+      <Link to="/nfts/$id" params={{ id }} className="block">
         <div className="relative aspect-square overflow-hidden bg-[#120E0C] flex items-center justify-center">
           <img 
             src={imageUrl} 
             alt={name} 
             className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
-              // Fallback se a imagem falhar
               (e.target as HTMLElement).style.display = 'none';
             }}
           />
-          <div className="absolute inset-0 flex items-center justify-center -z-10 text-[#A19288]/30 font-mono text-sm">
-            {name}
-          </div>
-
           <span className="absolute top-3 left-3 bg-[#120E0C]/80 text-[#E28743] text-xs font-mono px-2.5 py-1 rounded-md border border-[#342A24]">
             {category}
           </span>
@@ -49,12 +46,11 @@ export function NFTCard({ id, name, priceETH, edition, rarity, imageUrl, categor
           </span>
         </div>
 
-        {/* Informações */}
         <div className="p-4 space-y-1">
-          <h3 className="text-white font-semibold text-lg">{name}</h3>
+          <h3 className="text-white font-semibold text-lg hover:text-[#E28743] transition-colors">{name}</h3>
           <p className="text-xs text-[#A19288] font-mono">Edição {edition}</p>
         </div>
-      </div>
+      </Link>
 
       <div className="p-4 pt-0 space-y-3">
         <div className="flex items-center justify-between pt-3 border-t border-[#342A24]">
