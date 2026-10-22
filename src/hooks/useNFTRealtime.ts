@@ -34,6 +34,9 @@ export function useNFTRealtime() {
       auth: { token },
       forceNew: true,
     });
+    socket.io.on('open', () => console.info('[realtime] engine open'));
+    socket.io.on('error', (error) => console.error('[realtime] manager error', error.message));
+    socket.io.on('packet', (packet) => console.info('[realtime] packet', packet.type, packet.data));
     const versions = new Map<string, number>();
 
     const onConnect = () => {
