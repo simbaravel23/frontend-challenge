@@ -1,6 +1,6 @@
 import { toSocketIo } from '@mswjs/socket.io-binding';
 import { ws } from 'msw';
-import { mockNFTs } from './handlers';
+import { mockNFTs } from './catalogData';
 
 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const socketServer = ws.link(`${protocol}//${window.location.host}/`);

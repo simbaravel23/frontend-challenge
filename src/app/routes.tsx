@@ -14,6 +14,7 @@ import { useNFTRealtime } from '@/hooks/useNFTRealtime';
 import { ProfilePage } from '@/features/profile/ProfilePage';
 import { Footer } from '@/components/Footer';
 import { CatalogBottomSections } from '@/components/CatalogBottomSections';
+import { queryMockNFTCatalog } from '@/mocks/catalogData';
 
 interface NFT {
   id: string;
@@ -30,6 +31,7 @@ interface NFT {
 
 interface NFTListResponse {
   data: NFT[];
+  source?: 'local-fallback';
   pagination: {
     page: number;
     pageSize: number;
@@ -175,10 +177,29 @@ function CatalogPage() {
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ['nfts', { search, category, rarity, sort, page, pageSize }],
     queryFn: async () => {
-      const response = await axios.get<NFTListResponse>('/api/nfts', {
-        params: { search, category, rarity, sort, page, pageSize },
-      });
-      return response.data;
+      try {
+        const response = await axios.get<NFTListResponse>('/api/nfts', {
+          params: { search, category, rarity, sort, page, pageSize },
+        });
+        if (
+          !Array.isArray(response.data?.data)
+          || !response.data.pagination
+          || typeof response.data.pagination.total !== 'number'
+        ) {
+          throw new Error('The catalog endpoint returned an invalid response.');
+        }
+        return response.data;
+      } catch (error) {
+        if (!import.meta.env.PROD) throw error;
+
+        console.error('Catalog API unavailable; showing local demo catalog.', error);
+        const fallback = queryMockNFTCatalog({ search, category, rarity, sort, page, pageSize });
+        return {
+          ...fallback,
+          data: fallback.data.map((nft) => ({ ...nft, favorite: false })),
+          source: 'local-fallback' as const,
+        };
+      }
     },
   });
 
@@ -379,6 +400,12 @@ function CatalogPage() {
               </select>
             </label>
           </div>
+
+          {data?.source === 'local-fallback' && (
+            <p role="status" className="rounded-lg border border-[#E28743]/50 bg-[#E28743]/10 p-3 text-sm text-[#E9B17F]">
+              A API do catálogo está indisponível. Exibindo dados locais de demonstração.
+            </p>
+          )}
 
           {isLoading && (
             <div aria-label="A carregar NFTs" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">

@@ -1,20 +1,6 @@
 import BigNumber from 'bignumber.js';
 import { http, HttpResponse } from 'msw';
-
-export interface MockNFT {
-  id: string;
-  name: string;
-  description: string;
-  priceETH: string;
-  edition: string;
-  rarity: string;
-  category: string;
-  imageUrl: string;
-  creator: string;
-  owner: string;
-  available: number;
-  version: number;
-}
+import { mockNFTs, queryMockNFTCatalog } from './catalogData';
 
 interface MockUser {
   id: string;
@@ -36,42 +22,6 @@ interface OrderRequest {
   coupon?: string;
   totalETH: string;
 }
-
-const seeds = [
-  ['emerald-ape-042', 'Emerald Ape #042', '1.19', 'Raro', 'Arte digital'],
-  ['sage-nomad-009', 'Sage Nomad #009', '1.69', 'Épico', 'Arte digital'],
-  ['neon-vessel-552', 'Neon Vessel #552', '1.99', 'Comum', 'Música'],
-  ['quiet-orbit-118', 'Quiet Orbit #118', '0.82', 'Comum', 'Arte 3D'],
-  ['golden-hour-031', 'Golden Hour #031', '2.45', 'Lendário', 'Fotografia'],
-  ['pixel-garden-204', 'Pixel Garden #204', '0.56', 'Raro', 'Generativa'],
-  ['echoes-777', 'Echoes #777', '3.10', 'Épico', 'Música'],
-  ['driftwood-016', 'Driftwood #016', '0.93', 'Comum', 'Fotografia'],
-  ['cosmic-bloom-064', 'Cosmic Bloom #064', '4.25', 'Lendário', 'Generativa'],
-  ['arcade-ghost-090', 'Arcade Ghost #090', '1.34', 'Raro', 'Jogos'],
-  ['velvet-relic-022', 'Velvet Relic #022', '0.71', 'Comum', 'Colecionáveis'],
-  ['blue-hour-108', 'Blue Hour #108', '2.08', 'Épico', 'Fotografia'],
-  ['paper-moon-033', 'Paper Moon #033', '0.48', 'Comum', 'Arte digital'],
-  ['signal-noise-501', 'Signal Noise #501', '1.87', 'Raro', 'Música'],
-  ['vivid-machine-012', 'Vivid Machine #012', '5.20', 'Lendário', 'Arte 3D'],
-  ['tiny-world-304', 'Tiny World #304', '0.64', 'Comum', 'Jogos'],
-  ['dream-key-090', 'Dream Key #090', '1.12', 'Raro', 'Utilidade'],
-  ['silver-thread-045', 'Silver Thread #045', '2.76', 'Épico', 'Assinaturas'],
-] as const;
-
-export const mockNFTs: MockNFT[] = seeds.map(([id, name, priceETH, rarity, category], index) => ({
-  id,
-  name,
-  description: `${name} — arte digital exclusiva registada na rede Kurio.`,
-  priceETH,
-  edition: `1/${index === 0 ? 50 : 10 + index * 3}`,
-  rarity,
-  category,
-  imageUrl: '/mac.jpeg',
-  creator: 'Kurio Official',
-  owner: 'Galeria Kurio',
-  available: index === 0 ? 5 : 2 + (index % 8),
-  version: 1,
-}));
 
 const users = new Map<string, MockUser>([
   [
@@ -184,14 +134,6 @@ function createQuote(subtotalETH: string, coupon = '') {
   };
 }
 
-function compareNFTPrices(priceA: string, priceB: string): number {
-  const comparison = new BigNumber(priceA).comparedTo(priceB);
-  if (comparison === null) {
-    throw new Error('Cannot sort NFTs with invalid prices.');
-  }
-  return comparison;
-}
-
 function finalizeOrder(orderId: string): void {
   if (finalizedOrders.has(orderId)) return;
   const record = orders.get(orderId);
@@ -214,14 +156,17 @@ function finalizeOrder(orderId: string): void {
 export const handlers = [
   http.get('/api/nfts', ({ request }) => {
     const url = new URL(request.url);
-    const search = url.searchParams.get('search')?.trim().toLowerCase() ?? '';
+    const search = url.searchParams.get('search')?.trim() ?? '';
     const category = url.searchParams.get('category') ?? '';
     const rarity = url.searchParams.get('rarity') ?? '';
     const sort = url.searchParams.get('sort') ?? '';
     const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
     const pageSize = Math.min(24, Math.max(1, Number(url.searchParams.get('pageSize')) || 9));
 
-    if (url.searchParams.get('scenario') === 'server-error') {
+    if (
+      url.searchParams.get('scenario') === 'server-error'
+      || request.headers.get('x-mock-scenario') === 'catalog-error'
+    ) {
       return HttpResponse.json({ message: 'Falha temporária ao carregar o catálogo.' }, { status: 503 });
     }
     if (url.searchParams.get('scenario') === 'empty') {
@@ -230,29 +175,13 @@ export const handlers = [
 
     const user = getUser(request);
     const userFavorites = user ? getFavorites(user.id) : new Set<string>();
-    let filtered = mockNFTs.filter((nft) => {
-      const matchesSearch = !search || `${nft.name} ${nft.description}`.toLowerCase().includes(search);
-      const matchesCategory = !category || category === 'all' || nft.category.toLowerCase() === category.toLowerCase();
-      const matchesRarity = !rarity || rarity === 'all' || nft.rarity.toLowerCase() === rarity.toLowerCase();
-      return matchesSearch && matchesCategory && matchesRarity;
-    });
-
-    if (sort === 'price-asc') {
-      filtered = filtered.toSorted((a, b) => compareNFTPrices(a.priceETH, b.priceETH));
-    } else if (sort === 'price-desc') {
-      filtered = filtered.toSorted((a, b) => compareNFTPrices(b.priceETH, a.priceETH));
-    } else if (sort === 'name-asc') {
-      filtered = filtered.toSorted((a, b) => a.name.localeCompare(b.name));
-    }
-
-    const total = filtered.length;
-    const offset = (page - 1) * pageSize;
+    const catalog = queryMockNFTCatalog({ search, category, rarity, sort, page, pageSize });
     return HttpResponse.json({
-      data: filtered.slice(offset, offset + pageSize).map((nft) => ({
+      data: catalog.data.map((nft) => ({
         ...nft,
         favorite: userFavorites.has(nft.id),
       })),
-      pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+      pagination: catalog.pagination,
     });
   }),
 
