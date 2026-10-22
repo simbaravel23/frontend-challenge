@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
@@ -26,7 +26,7 @@ export function CheckoutPage() {
   const { cart, totalETH, clearCart } = useCart();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [selectedWallet, setSelectedWallet] = useState<string>('wallet-1');
+  const [selectedWallet, setSelectedWallet] = useState<string>('');
   const [network, setNetwork] = useState<string>('ethereum');
   const [coupon, setCoupon] = useState<string>('');
   const [appliedCoupon, setAppliedCoupon] = useState<string>('');
@@ -49,10 +49,9 @@ export function CheckoutPage() {
     },
   });
 
-  useEffect(() => {
-    const defaultWallet = wallets?.find((wallet) => wallet.isDefault);
-    if (defaultWallet) setSelectedWallet(defaultWallet.id);
-  }, [wallets]);
+  const activeWallet = wallets?.find((wallet) => wallet.id === selectedWallet)
+    ?? wallets?.find((wallet) => wallet.isDefault);
+  const activeWalletId = activeWallet?.id ?? '';
 
   // Obter cotação com ou sem cupão
   const { data: quote } = useQuery({
@@ -89,7 +88,7 @@ export function CheckoutPage() {
   };
 
   const handleConfirmOrder = async () => {
-    if (isSubmitting || !quote || !selectedWallet) return;
+    if (isSubmitting || !quote || !activeWalletId) return;
     setIsSubmitting(true);
     setOrderError('');
     try {
@@ -111,7 +110,7 @@ export function CheckoutPage() {
 
       const orderRequest = {
         items,
-        walletId: selectedWallet,
+        walletId: activeWalletId,
         network,
         coupon: appliedCoupon,
         totalETH: latestQuote.totalETH,
@@ -194,7 +193,7 @@ export function CheckoutPage() {
                 <label
                   key={w.id}
                   className={`flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${
-                    selectedWallet === w.id
+                    activeWalletId === w.id
                       ? 'border-[#E28743] bg-[#E28743]/10'
                       : 'border-[#342A24] bg-[#120E0C] hover:border-[#A19288]'
                   }`}
@@ -204,7 +203,7 @@ export function CheckoutPage() {
                       type="radio"
                       name="wallet"
                       value={w.id}
-                      checked={selectedWallet === w.id}
+                      checked={activeWalletId === w.id}
                       onChange={() => setSelectedWallet(w.id)}
                       className="accent-[#E28743]"
                     />
@@ -292,7 +291,7 @@ export function CheckoutPage() {
 
           <Button
             onClick={handleConfirmOrder}
-            disabled={isSubmitting || !quote || !selectedWallet || cart.some((item) => item.available < item.quantity)}
+            disabled={isSubmitting || !quote || !activeWalletId || cart.some((item) => item.available < item.quantity)}
             className="w-full bg-[#E28743] hover:bg-[#c97435] text-[#120E0C] font-bold py-3 cursor-pointer"
           >
             {isSubmitting ? 'A processar na simulação...' : quoteChanged ? 'Confirmar Novo Total' : 'Confirmar e Pagar'}

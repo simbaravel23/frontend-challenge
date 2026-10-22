@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/features/cart/context/CartContext';
@@ -42,6 +43,7 @@ export function NFTCard({
   const { cart, addToCart, removeFromCart } = useCart();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [favoriteError, setFavoriteError] = useState('');
   const isInCart = cart.some((item) => item.id === id);
 
   const favoriteMutation = useMutation({
@@ -53,6 +55,7 @@ export function NFTCard({
       }
     },
     onMutate: async (nextFavorite) => {
+      setFavoriteError('');
       await queryClient.cancelQueries({ queryKey: ['nfts'] });
       const previous = queryClient.getQueriesData<NFTListCache>({ queryKey: ['nfts'] });
       queryClient.setQueriesData<NFTListCache>({ queryKey: ['nfts'] }, (result) =>
@@ -67,6 +70,7 @@ export function NFTCard({
     },
     onError: (_error, _nextFavorite, context) => {
       context?.previous.forEach(([key, value]) => queryClient.setQueryData(key, value));
+      setFavoriteError('Não foi possível atualizar o favorito. Tente novamente.');
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['nfts'] });
@@ -133,6 +137,7 @@ export function NFTCard({
       >
         {isFavorite ? '♥' : '♡'}
       </button>
+      {favoriteError && <p role="alert" className="absolute left-3 top-14 z-10 rounded bg-red-950 px-2 py-1 text-xs text-red-200">{favoriteError}</p>}
 
       <div className="p-4 pt-0 space-y-3">
         <div className="flex items-center justify-between pt-3 border-t border-[#342A24]">
@@ -142,6 +147,9 @@ export function NFTCard({
           </div>
           <Button 
             size="sm" 
+            type="button"
+            aria-label={isInCart ? `Remover ${name} do carrinho` : `Adicionar ${name} ao carrinho`}
+            disabled={!isInCart && available < 1}
             onClick={handleToggleCart}
             className={`font-semibold cursor-pointer transition-colors ${
               isInCart 
@@ -149,7 +157,7 @@ export function NFTCard({
                 : 'bg-[#E28743] hover:bg-[#c97435] text-[#120E0C]'
             }`}
           >
-            {isInCart ? 'Remover' : 'Adicionar'}
+            {available < 1 && !isInCart ? 'Esgotado' : isInCart ? 'Remover' : 'Adicionar'}
           </Button>
         </div>
       </div>

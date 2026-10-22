@@ -9,8 +9,11 @@ import { Button } from '@/components/ui/button';
 import { NFTDetailPage } from '@/features/catalog/pages/NFTDetailPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { CheckoutPage } from '@/features/cart/pages/CheckoutPage';
+import { OrderConfirmationPage } from '@/features/cart/pages/OrderConfirmationPage';
 import { useNFTRealtime } from '@/hooks/useNFTRealtime';
 import { ProfilePage } from '@/features/profile/ProfilePage';
+import { Footer } from '@/components/Footer';
+import { CatalogBottomSections } from '@/components/CatalogBottomSections';
 
 interface NFT {
   id: string;
@@ -88,18 +91,12 @@ function RootLayout() {
             >
               Mercado
             </Link>
-            <a 
-              href="#criadores" 
-              className="text-[#A19288] hover:text-white transition-colors cursor-pointer"
-            >
+            <span className="text-[#A19288]" aria-disabled="true">
               Criadores
-            </a>
-            <a 
-              href="#aprenda" 
-              className="text-[#A19288] hover:text-white transition-colors cursor-pointer"
-            >
+            </span>
+            <span className="text-[#A19288]" aria-disabled="true">
               Aprenda
-            </a>
+            </span>
           </nav>
 
           {/* Ações da Direita: Lupa, Carrinho com Badge e Botão Entrar com Ícone */}
@@ -114,7 +111,7 @@ function RootLayout() {
               </svg>
             </button>
 
-            <Link to="/cart" className="relative text-[#A19288] hover:text-white transition-colors p-1 flex items-center">
+            <Link to="/cart" aria-label="Carrinho" className="relative text-[#A19288] hover:text-white transition-colors p-1 flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
@@ -139,13 +136,11 @@ function RootLayout() {
                 </button>
               </div>
             ) : (
-              <Link to="/login">
-                <Button className="bg-[#E28743] hover:bg-[#c97435] text-[#120E0C] font-semibold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer">
+              <Link to="/login" className="rounded-lg bg-[#E28743] px-3.5 py-1.5 text-xs font-semibold text-[#120E0C] transition-colors hover:bg-[#c97435] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E28743]">
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                   </svg>
                   <span>Entrar</span>
-                </Button>
               </Link>
             )}
           </div>
@@ -156,6 +151,7 @@ function RootLayout() {
         <main className="max-w-7xl mx-auto px-8 py-10">
           <Outlet />
         </main>
+        <Footer />
       </div>
     );
 }
@@ -254,6 +250,7 @@ function CatalogPage() {
           <div className="space-y-3">
             <h3 className="text-white font-bold text-sm font-mono border-b border-[#342A24]/60 pb-2">Pesquisa</h3>
             <input
+              aria-label="Pesquisar NFT"
               type="text"
               placeholder="Pesquisar NFT..."
               value={search}
@@ -443,6 +440,7 @@ function CatalogPage() {
           )}
         </div>
       </div>
+      <CatalogBottomSections />
     </div>
   );
 }
@@ -572,10 +570,11 @@ export const indexRoute = createRoute({
   path: '/',
   validateSearch: (search: Record<string, unknown>): CatalogSearchParams => {
     return {
-      search: (search.search as string) || undefined,
-      category: (search.category as string) || undefined,
-      rarity: (search.rarity as string) || undefined,
-      sort: (search.sort as string) || undefined,
+      search: typeof search.search === 'string' ? search.search : undefined,
+      category: typeof search.category === 'string' ? search.category : undefined,
+      rarity: typeof search.rarity === 'string' ? search.rarity : undefined,
+      sort: typeof search.sort === 'string' ? search.sort : undefined,
+      page: Number.isInteger(Number(search.page)) && Number(search.page) > 0 ? Number(search.page) : 1,
     };
   },
   component: CatalogPage,
@@ -613,6 +612,13 @@ export const profileRoute = createRoute({
   component: ProfilePage,
 });
 
+export const orderRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/orders/$id',
+  beforeLoad: ensureAuthenticated,
+  component: OrderConfirmationPage,
+});
+
 async function ensureAuthenticated({ location }: { location: { pathname: string; searchStr: string } }) {
   const token = window.localStorage.getItem('kurio_token');
   const returnTo = `${location.pathname}${location.searchStr}`;
@@ -641,6 +647,7 @@ const routeTree = rootRoute.addChildren([
   nftDetailRoute,
   loginRoute,
   profileRoute,
+  orderRoute,
 ]);
 
 export const router = createRouter({ routeTree });

@@ -301,6 +301,9 @@ export const handlers = [
   http.post('/api/favorites/:id', ({ params, request }) => {
     const user = getUser(request);
     if (!user) return unauthorized();
+    if (request.headers.get('x-mock-scenario') === 'favorite-error') {
+      return HttpResponse.json({ message: 'Falha simulada ao atualizar favoritos.' }, { status: 503 });
+    }
     if (!mockNFTs.some((nft) => nft.id === params.id)) {
       return HttpResponse.json({ message: 'NFT não encontrado.' }, { status: 404 });
     }
@@ -311,6 +314,9 @@ export const handlers = [
   http.delete('/api/favorites/:id', ({ params, request }) => {
     const user = getUser(request);
     if (!user) return unauthorized();
+    if (request.headers.get('x-mock-scenario') === 'favorite-error') {
+      return HttpResponse.json({ message: 'Falha simulada ao atualizar favoritos.' }, { status: 503 });
+    }
     getFavorites(user.id).delete(String(params.id));
     return HttpResponse.json({ data: [...getFavorites(user.id)] });
   }),

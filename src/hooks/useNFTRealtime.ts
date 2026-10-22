@@ -34,10 +34,12 @@ export function useNFTRealtime() {
     });
     const versions = new Map<string, number>();
 
-    const reconcile = () => {
+    const onConnect = () => {
       void queryClient.invalidateQueries({ queryKey: ['nfts'] });
       void queryClient.invalidateQueries({ queryKey: ['nft'] });
       void queryClient.invalidateQueries({ queryKey: ['cart'] });
+      const scenario = window.localStorage.getItem('kurio_mock_scenario');
+      if (scenario?.startsWith('socket-')) socket.emit('mock.trigger', scenario);
     };
 
     const onNFTUpdate = (data: NFTUpdatePayload) => {
@@ -70,10 +72,10 @@ export function useNFTRealtime() {
       );
     };
 
-    socket.on('connect', reconcile);
+    socket.on('connect', onConnect);
     socket.on('nft.updated', onNFTUpdate);
     return () => {
-      socket.off('connect', reconcile);
+      socket.off('connect', onConnect);
       socket.off('nft.updated', onNFTUpdate);
       socket.disconnect();
     };
