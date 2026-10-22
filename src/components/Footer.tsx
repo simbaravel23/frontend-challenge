@@ -130,7 +130,7 @@ export function Footer() {
 
           <div className="space-y-2">
             <h5 className="text-white font-bold text-[11px]">Carteiras compatíveis</h5>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="bg-[#1E1815] border border-[#342A24] px-2 py-1 rounded text-[10px] text-[#A19288]">METAMASK</span>
               <span className="bg-[#1E1815] border border-[#342A24] px-2 py-1 rounded text-[10px] text-[#A19288]">WALLETCONNECT</span>
               <span className="bg-[#1E1815] border border-[#342A24] px-2 py-1 rounded text-[10px] text-[#A19288]">COINBASE</span>

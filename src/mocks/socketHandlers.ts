@@ -23,7 +23,6 @@ export const socketHandlers = [
   socketServer.addEventListener('connection', (connection) => {
     const { client } = toSocketIo(connection);
     client.on('mock.trigger', (_event, scenario: string) => {
-      console.info('[socket mock] trigger', scenario);
       if (scenario === 'socket-update') {
         version += 1;
         emitNFTUpdate(client, version);
