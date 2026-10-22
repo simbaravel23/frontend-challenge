@@ -3,7 +3,7 @@ import { ws } from 'msw';
 import { mockNFTs } from './handlers';
 
 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-const socketServer = ws.link(`${protocol}//${window.location.host}/socket.io/`);
+const socketServer = ws.link(`${protocol}//${window.location.host}/`);
 let version = Math.max(...mockNFTs.map((nft) => nft.version));
 
 function emitNFTUpdate(server: ReturnType<typeof toSocketIo>['server'], updateVersion: number) {

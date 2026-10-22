@@ -126,12 +126,6 @@ test.describe('Kurio Marketplace — fluxos principais', () => {
 
   test('atualiza preço por Socket.IO e adapta a interface mobile', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    page.on('websocket', (socket) => {
-      console.log(`[E2E websocket] ${socket.url()}`);
-      socket.on('framesent', (frame) => console.log(`[E2E sent] ${String(frame.payload)}`));
-      socket.on('framereceived', (frame) => console.log(`[E2E received] ${String(frame.payload)}`));
-      socket.on('socketerror', (error) => console.log(`[E2E socket error] ${error}`));
-    });
     await signInAsSeedUser(page);
     await page.evaluate(() => localStorage.setItem('kurio_mock_scenario', 'socket-update'));
     await page.goto('/');
