@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { NFTDetailPage } from '@/features/catalog/pages/NFTDetailPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { CheckoutPage } from '@/features/cart/pages/CheckoutPage';
+import { useNFTRealtime } from '@/hooks/useNFTRealtime';
 
 interface NFT {
   id: string;
@@ -126,6 +127,7 @@ function CatalogPage() {
   const category = searchParams.category || 'all';
   const rarity = searchParams.rarity || 'all';
   const sort = searchParams.sort || 'none';
+  const { priceAlert, clearAlert } = useNFTRealtime();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['nfts', { search, category, rarity, sort }],
@@ -150,6 +152,22 @@ function CatalogPage() {
 
   return (
     <div className="space-y-12">
+      {/* Alerta de Atualização de Cotação em Tempo Real */}
+      {priceAlert && (
+        <div className="bg-[#E28743]/20 border border-[#E28743] text-white p-4 rounded-xl flex items-center justify-between font-mono text-xs animate-pulse">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#E28743] animate-ping" />
+            <span>{priceAlert}</span>
+          </div>
+          <button 
+            onClick={clearAlert}
+            className="text-[#A19288] hover:text-white underline cursor-pointer"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
+
       {/* Hero Banner */}
       <div className="bg-[#1E1815] border border-[#342A24] rounded-2xl p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8 shadow-xl">
         <div className="space-y-4 max-w-xl">
@@ -172,7 +190,7 @@ function CatalogPage() {
         </div>
         <div className="w-full md:w-80 aspect-square rounded-xl overflow-hidden border border-[#342A24] bg-[#120E0C] shadow-lg flex items-center justify-center">
           <img 
-            src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop" 
+            src="/mac.jpeg" 
             alt="Destaque Kurio" 
             className="w-full h-full object-cover"
           />
@@ -285,7 +303,7 @@ function CatalogPage() {
             </div>
             <div className="aspect-square rounded-lg overflow-hidden border border-[#342A24]">
               <img
-                src="https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=600&auto=format&fit=crop"
+                src="/mac.jpeg"
                 alt="NFT em Destaque"
                 className="w-full h-full object-cover"
               />
