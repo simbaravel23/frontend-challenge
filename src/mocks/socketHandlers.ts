@@ -1,31 +1,30 @@
+import { toSocketIo } from '@mswjs/socket.io-binding';
 import { ws } from 'msw';
+import { mockNFTs } from './handlers';
 
-// Simulação de servidor WebSocket escutando na porta padrão do Socket.IO
-const socketServer = ws.link('ws://localhost:5173'); // ou a porta onde o teu servidor vite roda (ex: :5176)
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const socketServer = ws.link(`${protocol}//${window.location.host}/socket.io/`);
 
 export const socketHandlers = [
-  socketServer.addEventListener('connection', ({ client }) => {
-    console.log('[MSW Socket.IO] Cliente conectado:', client.id);
-
-    // Evento de simulação: Dispara atualização de preço/disponibilidade do NFT a cada 15 segundos
-    const interval = setInterval(() => {
-      client.send(
-        JSON.stringify({
-          type: 'nft.updated',
-          payload: {
-            id: 'emerald-ape-042',
-            priceETH: '1.45', // Preço atualizado em tempo real
-            available: true,
-            version: Date.now(),
-          },
-        })
-      );
+  socketServer.addEventListener('connection', (connection) => {
+    const { server } = toSocketIo(connection);
+    let version = Math.max(...mockNFTs.map((nft) => nft.version));
+    const interval = window.setInterval(() => {
+      const nft = mockNFTs[0];
+      version += 1;
+      nft.priceETH = version % 2 === 0 ? '1.45' : '1.19';
+      nft.version = version;
+      server.emit('nft.updated', {
+        id: nft.id,
+        priceETH: nft.priceETH,
+        available: nft.available > 0,
+        editionAvailable: nft.available,
+        version,
+      });
     }, 15000);
 
-   // @ts-expect-error - Ignora restrição de tipo interna do MSW para socket.io
-    client.addEventListener('disconnect', () => {
-      clearInterval(interval);
-      console.log('[MSW Socket.IO] Cliente desconectado');
+    connection.server.addEventListener('close', () => {
+      window.clearInterval(interval);
     });
   }),
 ];

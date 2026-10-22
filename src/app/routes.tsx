@@ -1,5 +1,7 @@
-import { createRootRoute, createRoute, createRouter, Outlet, Link, useNavigate } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
+/* eslint-disable react-refresh/only-export-components */
+import { createRootRoute, createRoute, createRouter, Outlet, Link, redirect, useNavigate } from '@tanstack/react-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import axios from 'axios';
 import { NFTCard } from '@/features/catalog/components/NFTCard';
 import { useCart } from '@/features/cart/context/CartContext';
@@ -8,6 +10,7 @@ import { NFTDetailPage } from '@/features/catalog/pages/NFTDetailPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { CheckoutPage } from '@/features/cart/pages/CheckoutPage';
 import { useNFTRealtime } from '@/hooks/useNFTRealtime';
+import { ProfilePage } from '@/features/profile/ProfilePage';
 
 interface NFT {
   id: string;
@@ -17,6 +20,19 @@ interface NFT {
   rarity: string;
   imageUrl: string;
   category: string;
+  available: number;
+  favorite: boolean;
+  version: number;
+}
+
+interface NFTListResponse {
+  data: NFT[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 interface CatalogSearchParams {
@@ -24,13 +40,30 @@ interface CatalogSearchParams {
   category?: string;
   rarity?: string;
   sort?: string;
+  page?: number;
 }
 
-// 1. Root Route (Header Fiel ao Figma)
-export const rootRoute = createRootRoute({
-  component: () => {
+function RootLayout() {
     const { cart } = useCart();
+    const queryClient = useQueryClient();
+    const navigate = useNavigate();
+    const [logoutError, setLogoutError] = useState('');
     const token = typeof window !== 'undefined' ? localStorage.getItem('kurio_token') : null;
+
+    const handleLogout = async () => {
+      setLogoutError('');
+      try {
+        await axios.post('/api/auth/logout');
+        localStorage.removeItem('kurio_token');
+        localStorage.removeItem('kurio_user_id');
+        localStorage.removeItem('kurio_user');
+        window.dispatchEvent(new CustomEvent('kurio:auth-changed', { detail: { userId: null } }));
+        queryClient.clear();
+        void navigate({ to: '/' });
+      } catch {
+        setLogoutError('Não foi possível encerrar a sessão. Tente novamente.');
+      }
+    };
 
     return (
       <div className="min-h-screen bg-[#120E0C] text-[#A19288] font-sans">
@@ -87,15 +120,24 @@ export const rootRoute = createRootRoute({
               </svg>
               {cart.length > 0 && (
                 <span className="absolute -top-1 -right-2 bg-[#E28743] text-[#120E0C] text-[10px] font-bold font-mono min-width-[16px] h-4 px-1 rounded-full flex items-center justify-center">
-                  {cart.length}
+                  {cart.reduce((count, item) => count + item.quantity, 0)}
                 </span>
               )}
             </Link>
 
             {token ? (
-              <span className="text-xs font-mono text-[#E28743] bg-[#E28743]/10 px-3 py-1.5 rounded-lg border border-[#E28743]/30">
-                ● Conectado
-              </span>
+              <div className="flex items-center gap-3">
+                <Link to="/profile" className="text-xs font-mono text-[#E28743] bg-[#E28743]/10 px-3 py-1.5 rounded-lg border border-[#E28743]/30">
+                  Perfil
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void handleLogout()}
+                  className="text-xs text-[#A19288] underline hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E28743]"
+                >
+                  Sair
+                </button>
+              </div>
             ) : (
               <Link to="/login">
                 <Button className="bg-[#E28743] hover:bg-[#c97435] text-[#120E0C] font-semibold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer">
@@ -107,6 +149,7 @@ export const rootRoute = createRootRoute({
               </Link>
             )}
           </div>
+          {logoutError && <p role="alert" className="absolute right-8 top-full rounded bg-red-950 p-2 text-xs text-red-300">{logoutError}</p>}
         </header>
 
         {/* Conteúdo Principal */}
@@ -115,8 +158,10 @@ export const rootRoute = createRootRoute({
         </main>
       </div>
     );
-  },
-});
+}
+
+// 1. Root Route (Header Fiel ao Figma)
+export const rootRoute = createRootRoute({ component: RootLayout });
 
 // 2. Catálogo (Hero Banner + Sidebar Ajustada ao Figma)
 function CatalogPage() {
@@ -127,26 +172,30 @@ function CatalogPage() {
   const category = searchParams.category || 'all';
   const rarity = searchParams.rarity || 'all';
   const sort = searchParams.sort || 'none';
+  const page = searchParams.page ?? 1;
+  const pageSize = 9;
   const { priceAlert, clearAlert } = useNFTRealtime();
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['nfts', { search, category, rarity, sort }],
+  const { data, isLoading, isFetching, error } = useQuery({
+    queryKey: ['nfts', { search, category, rarity, sort, page, pageSize }],
     queryFn: async () => {
-      const response = await axios.get<{ data: NFT[] }>('/api/nfts', {
-        params: { search, category, rarity, sort },
+      const response = await axios.get<NFTListResponse>('/api/nfts', {
+        params: { search, category, rarity, sort, page, pageSize },
       });
-      return response.data.data;
+      return response.data;
     },
   });
 
   const updateFilters = (newParams: Partial<CatalogSearchParams>) => {
+    const hasFilterChanged = ['search', 'category', 'rarity', 'sort']
+      .some((key) => key in newParams);
     navigate({
       to: '/',
       search: (prev) => ({
         ...prev,
         ...newParams,
+        ...(hasFilterChanged && !('page' in newParams) ? { page: 1 } : {}),
       }),
-      replace: true,
     });
   };
 
@@ -181,7 +230,7 @@ function CatalogPage() {
             Colecione NFTs autenticados de criadores excecionais e acompanhe a proveniência desta página rara. Arte urbana e temas de culto de culturas de exceção.
           </p>
           <div className="pt-2">
-            <Link to="/nfts/emerald-ape-042">
+            <Link to="/nfts/$id" params={{ id: 'emerald-ape-042' }}>
               <Button className="bg-[#E28743] hover:bg-[#c97435] text-[#120E0C] font-bold px-6 py-3 cursor-pointer">
                 Ver Destaque
               </Button>
@@ -313,14 +362,44 @@ function CatalogPage() {
 
         {/* Listagem de Cards */}
         <div className="lg:col-span-3 space-y-6">
-          <div className="flex items-center justify-between border-b border-[#342A24] pb-4 font-mono text-xs text-[#A19288]">
-            <span>Exibindo {data?.length || 0} resultado(s)</span>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#342A24] pb-4 font-mono text-xs text-[#A19288]">
+            <span>
+              Exibindo {data?.data.length ?? 0} de {data?.pagination.total ?? 0} resultado(s)
+              {isFetching && <span role="status" className="ml-2 text-[#E28743]">Atualizando...</span>}
+            </span>
+            <label className="flex items-center gap-2">
+              <span>Ordenar</span>
+              <select
+                aria-label="Ordenar catálogo"
+                value={sort}
+                onChange={(event) => updateFilters({ sort: event.target.value || undefined })}
+                className="rounded-md border border-[#342A24] bg-[#120E0C] px-2 py-1 text-white"
+              >
+                <option value="none">Recentes</option>
+                <option value="price-asc">Menor preço</option>
+                <option value="price-desc">Maior preço</option>
+                <option value="name-asc">Nome</option>
+              </select>
+            </label>
           </div>
 
-          {isLoading && <div className="text-center py-20 text-[#A19288] font-mono">A carregar NFTs...</div>}
+          {isLoading && (
+            <div aria-label="A carregar NFTs" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {Array.from({ length: pageSize }, (_, index) => (
+                <div key={index} className="animate-pulse rounded-xl border border-[#342A24] bg-[#1E1815]">
+                  <div className="aspect-square rounded-t-xl bg-[#342A24]" />
+                  <div className="space-y-3 p-4">
+                    <div className="h-4 w-2/3 rounded bg-[#342A24]" />
+                    <div className="h-3 w-1/3 rounded bg-[#342A24]" />
+                    <div className="h-9 rounded bg-[#342A24]" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {error && <div className="text-center py-20 text-red-400 font-mono">Erro ao carregar o catálogo.</div>}
 
-          {!isLoading && !error && data?.length === 0 && (
+          {!isLoading && !error && data?.data.length === 0 && (
             <div className="text-center py-20 space-y-3 bg-[#1E1815] border border-[#342A24] rounded-2xl p-8">
               <h3 className="text-lg font-bold text-white">Nenhum NFT encontrado</h3>
               <p className="text-xs text-[#A19288]">Tente limpar os filtros na barra lateral.</p>
@@ -333,12 +412,34 @@ function CatalogPage() {
             </div>
           )}
 
-          {!isLoading && !error && data && data.length > 0 && (
+          {!isLoading && !error && data && data.data.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {data.map((nft) => (
+              {data.data.map((nft) => (
                 <NFTCard key={nft.id} {...nft} />
               ))}
             </div>
+          )}
+
+          {!isLoading && !error && (data?.pagination.totalPages ?? 0) > 1 && (
+            <nav aria-label="Paginação do catálogo" className="flex items-center justify-center gap-4 pt-2">
+              <Button
+                variant="outline"
+                disabled={page <= 1}
+                onClick={() => updateFilters({ page: page - 1 })}
+              >
+                Anterior
+              </Button>
+              <span aria-live="polite" className="font-mono text-sm text-white">
+                Página {page} de {data?.pagination.totalPages}
+              </span>
+              <Button
+                variant="outline"
+                disabled={page >= (data?.pagination.totalPages ?? 1)}
+                onClick={() => updateFilters({ page: page + 1 })}
+              >
+                Próxima
+              </Button>
+            </nav>
           )}
         </div>
       </div>
@@ -348,7 +449,7 @@ function CatalogPage() {
 
 // 3. Página do Carrinho
 function CartPage() {
-  const { cart, removeFromCart, clearCart, totalETH } = useCart();
+  const { cart, updateQuantity, removeFromCart, clearCart, totalETH } = useCart();
 
   if (cart.length === 0) {
     return (
@@ -409,7 +510,25 @@ function CartPage() {
               </div>
 
               <div className="flex items-center gap-6">
-                <span className="text-[#E28743] font-mono font-bold">{item.priceETH} ETH</span>
+                <div className="space-y-1 text-right">
+                  <span className="block text-[#E28743] font-mono font-bold">{item.priceETH} ETH cada</span>
+                  <label className="flex items-center justify-end gap-2 text-xs">
+                    <span>Quantidade</span>
+                    <input
+                      aria-label={`Quantidade de ${item.name}`}
+                      type="number"
+                      min={1}
+                      max={item.available}
+                      value={item.quantity}
+                      disabled={item.available === 0}
+                      onChange={(event) => updateQuantity(item.id, Number(event.target.value))}
+                      className="w-16 rounded border border-[#342A24] bg-[#120E0C] px-2 py-1 text-center text-white disabled:opacity-50"
+                    />
+                  </label>
+                  {item.available === 0 && (
+                    <p role="alert" className="text-xs text-red-400">Edição esgotada</p>
+                  )}
+                </div>
                 <Button 
                   size="sm"
                   onClick={() => removeFromCart(item.id)}
@@ -428,7 +547,7 @@ function CartPage() {
           <div className="space-y-3 font-mono text-sm">
             <div className="flex justify-between text-[#A19288]">
               <span>Quantidade</span>
-              <span className="text-white">{cart.length} NFT(s)</span>
+              <span className="text-white">{cart.reduce((count, item) => count + item.quantity, 0)} NFT(s)</span>
             </div>
             <div className="border-t border-[#342A24] pt-3 flex justify-between text-base font-bold">
               <span className="text-white">Total</span>
@@ -471,6 +590,7 @@ export const cartRoute = createRoute({
 export const checkoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/cart/checkout',
+  beforeLoad: ensureAuthenticated,
   component: CheckoutPage,
 });
 
@@ -486,12 +606,41 @@ export const loginRoute = createRoute({
   component: LoginPage,
 });
 
+export const profileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/profile',
+  beforeLoad: ensureAuthenticated,
+  component: ProfilePage,
+});
+
+async function ensureAuthenticated({ location }: { location: { pathname: string; searchStr: string } }) {
+  const token = window.localStorage.getItem('kurio_token');
+  const returnTo = `${location.pathname}${location.searchStr}`;
+  if (!token) {
+    window.sessionStorage.setItem('kurio_return_to', returnTo);
+    throw redirect({ to: '/login' });
+  }
+
+  try {
+    await axios.get('/api/auth/session');
+  } catch (error) {
+    if (!axios.isAxiosError(error) || error.response?.status !== 401) throw error;
+    window.localStorage.removeItem('kurio_token');
+    window.localStorage.removeItem('kurio_user_id');
+    window.localStorage.removeItem('kurio_user');
+    window.dispatchEvent(new CustomEvent('kurio:auth-changed', { detail: { userId: null } }));
+    window.sessionStorage.setItem('kurio_return_to', returnTo);
+    throw redirect({ to: '/login' });
+  }
+}
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   cartRoute,
   checkoutRoute,
   nftDetailRoute,
   loginRoute,
+  profileRoute,
 ]);
 
 export const router = createRouter({ routeTree });

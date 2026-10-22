@@ -29,16 +29,26 @@ export function LoginPage() {
     setIsLoading(true);
 
     try {
-      if (!isRegister) {
-        // Fluxo de Login
-        const response = await axios.post('/api/auth/login', { email, password });
-        localStorage.setItem('kurio_token', response.data.token);
-        navigate({ to: '/' });
-      } else {
-        // Simulação de Registo
-        localStorage.setItem('kurio_token', 'mock-jwt-register-token');
-        navigate({ to: '/' });
+      const response = await axios.post<{
+        token: string;
+        user: { id: string; name: string; email: string; avatar: string };
+      }>(
+        isRegister ? '/api/auth/register' : '/api/auth/login',
+        isRegister ? { name: username, email, password } : { email, password },
+      );
+      localStorage.setItem('kurio_token', response.data.token);
+      localStorage.setItem('kurio_user_id', response.data.user.id);
+      localStorage.setItem('kurio_user', JSON.stringify(response.data.user));
+      window.dispatchEvent(new CustomEvent('kurio:auth-changed', {
+        detail: { userId: response.data.user.id },
+      }));
+      const returnTo = sessionStorage.getItem('kurio_return_to');
+      if (returnTo?.startsWith('/') && !returnTo.startsWith('//')) {
+        sessionStorage.removeItem('kurio_return_to');
+        window.location.assign(returnTo);
+        return;
       }
+      void navigate({ to: '/' });
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.data?.message) {
         setError(err.response.data.message);
@@ -67,6 +77,7 @@ export function LoginPage() {
             <div>
               <input
                 type="text"
+                aria-label="Nome de usuário"
                 placeholder="Nome de usuário"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -79,6 +90,7 @@ export function LoginPage() {
           <div>
             <input
               type="email"
+              aria-label="E-mail"
               placeholder={isRegister ? 'Digite seu e-mail' : 'contato@email.com'}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -89,9 +101,11 @@ export function LoginPage() {
 
           <div className="relative">
             <input
+              aria-label="Senha"
               type={showPassword ? 'text' : 'password'}
               placeholder="Senha"
               value={password}
+              minLength={8}
               onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full bg-[#120E0C] border border-[#342A24] text-white text-xs rounded-xl px-4 py-3 pr-10 focus:outline-none focus:border-[#E28743] placeholder-[#A19288]/70"
@@ -116,27 +130,27 @@ export function LoginPage() {
 
           {!isRegister && (
             <div className="text-right">
-              <a href="#esqueceu" className="text-[11px] text-[#A19288] hover:text-[#E28743] transition-colors">
-                Esqueceu a senha?
-              </a>
+              <span className="text-[11px] text-[#A19288]">Recuperação de senha indisponível no ambiente simulado.</span>
             </div>
           )}
 
           {isRegister && (
             <div className="relative">
               <input
+                aria-label="Confirmar senha"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Confirmar senha"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                minLength={8}
                 className="w-full bg-[#120E0C] border border-[#342A24] text-white text-xs rounded-xl px-4 py-3 pr-10 focus:outline-none focus:border-[#E28743] placeholder-[#A19288]/70"
               />
             </div>
           )}
 
           {error && (
-            <div className="text-[11px] text-red-400 bg-red-950/40 border border-red-900 p-2.5 rounded-lg text-center">
+            <div id="auth-error" role="alert" className="text-[11px] text-red-400 bg-red-950/40 border border-red-900 p-2.5 rounded-lg text-center">
               {error}
             </div>
           )}
@@ -144,6 +158,7 @@ export function LoginPage() {
           <Button
             type="submit"
             disabled={isLoading}
+            aria-describedby={error ? 'auth-error' : undefined}
             className="w-full bg-[#E28743] hover:bg-[#c97435] text-[#120E0C] font-bold text-xs py-3 rounded-xl cursor-pointer mt-2"
           >
             {isLoading ? 'A processar...' : isRegister ? 'Criar perfil' : 'Entrar'}
@@ -164,11 +179,10 @@ export function LoginPage() {
           {/* Continuar com Google */}
           <button
             type="button"
-            onClick={() => {
-              localStorage.setItem('kurio_token', 'mock-google-token');
-              navigate({ to: '/' });
-            }}
-            className="w-full bg-[#120E0C] border border-[#342A24] hover:border-[#A19288] text-white py-2.5 px-4 rounded-xl flex items-center justify-center gap-2.5 transition-colors cursor-pointer"
+            disabled
+            aria-disabled="true"
+            title="Autenticação social fora do escopo do mock"
+            className="w-full bg-[#120E0C] border border-[#342A24] text-white/60 py-2.5 px-4 rounded-xl flex items-center justify-center gap-2.5 cursor-not-allowed"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path
@@ -188,22 +202,21 @@ export function LoginPage() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
               />
             </svg>
-            <span>Continuar com Google</span>
+            <span>Google (indisponível no mock)</span>
           </button>
 
           {/* Continuar com Facebook */}
           <button
             type="button"
-            onClick={() => {
-              localStorage.setItem('kurio_token', 'mock-facebook-token');
-              navigate({ to: '/' });
-            }}
-            className="w-full bg-[#120E0C] border border-[#342A24] hover:border-[#A19288] text-white py-2.5 px-4 rounded-xl flex items-center justify-center gap-2.5 transition-colors cursor-pointer"
+            disabled
+            aria-disabled="true"
+            title="Autenticação social fora do escopo do mock"
+            className="w-full bg-[#120E0C] border border-[#342A24] text-white/60 py-2.5 px-4 rounded-xl flex items-center justify-center gap-2.5 cursor-not-allowed"
           >
             <svg className="w-4 h-4 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24">
               <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
             </svg>
-            <span>Continuar com Facebook</span>
+            <span>Facebook (indisponível no mock)</span>
           </button>
         </div>
 

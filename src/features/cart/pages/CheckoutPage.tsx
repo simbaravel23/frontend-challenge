@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useCart } from '@/features/cart/context/CartContext';
 import { Button } from '@/components/ui/button';
+import { useNFTRealtime } from '@/hooks/useNFTRealtime';
 
 interface Wallet {
   id: string;
@@ -13,17 +14,31 @@ interface Wallet {
   isDefault: boolean;
 }
 
+interface Quote {
+  subtotalETH: string;
+  discountETH: string;
+  networkFeeETH: string;
+  totalETH: string;
+  coupon: string | null;
+}
+
 export function CheckoutPage() {
-  const { cart, clearCart } = useCart();
+  const { cart, totalETH, clearCart } = useCart();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [selectedWallet, setSelectedWallet] = useState<string>('wallet-1');
   const [network, setNetwork] = useState<string>('ethereum');
   const [coupon, setCoupon] = useState<string>('');
   const [appliedCoupon, setAppliedCoupon] = useState<string>('');
   const [couponError, setCouponError] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [orderCompleted, setOrderCompleted] = useState<string | null>(null);
+  const [orderError, setOrderError] = useState<string>('');
+  const [quoteChanged, setQuoteChanged] = useState(false);
+  const idempotencyKeyRef = useRef<{ signature: string; key: string } | null>(null);
+  const { priceAlert } = useNFTRealtime();
 
-  const subtotalETH = cart.reduce((acc, item) => acc + parseFloat(item.priceETH), 0);
+  const subtotalETH = totalETH;
+  const cartSignature = JSON.stringify(cart.map(({ id, quantity }) => ({ id, quantity })));
 
   // Buscar carteiras do utilizador
   const { data: wallets } = useQuery({
@@ -34,15 +49,22 @@ export function CheckoutPage() {
     },
   });
 
+  useEffect(() => {
+    const defaultWallet = wallets?.find((wallet) => wallet.isDefault);
+    if (defaultWallet) setSelectedWallet(defaultWallet.id);
+  }, [wallets]);
+
   // Obter cotação com ou sem cupão
   const { data: quote } = useQuery({
-    queryKey: ['checkout-quote', subtotalETH, appliedCoupon],
+    queryKey: ['checkout-quote', cartSignature, appliedCoupon],
     queryFn: async () => {
+      await axios.put('/api/cart', {
+        items: cart.map(({ id, quantity }) => ({ id, quantity })),
+      });
       const response = await axios.post('/api/checkout/quote', {
-        subtotalETH,
         coupon: appliedCoupon,
       });
-      return response.data;
+      return response.data as Quote;
     },
     enabled: cart.length > 0,
   });
@@ -51,65 +73,85 @@ export function CheckoutPage() {
     e.preventDefault();
     setCouponError('');
     try {
-      await axios.post('/api/checkout/quote', { subtotalETH, coupon });
-      setAppliedCoupon(coupon);
-    } catch {
-      setCouponError('Cupão inválido. Tente KURIO10 para 10% de desconto.');
+      await axios.put('/api/cart', {
+        items: cart.map(({ id, quantity }) => ({ id, quantity })),
+      });
+      await axios.post('/api/checkout/quote', { coupon });
+      setAppliedCoupon(coupon.trim().toUpperCase());
+      setQuoteChanged(false);
+    } catch (error) {
+      if (axios.isAxiosError<{ message?: string }>(error)) {
+        setCouponError(error.response?.data.message ?? 'Não foi possível validar o cupão.');
+      } else {
+        setCouponError('Não foi possível validar o cupão.');
+      }
     }
   };
 
   const handleConfirmOrder = async () => {
+    if (isSubmitting || !quote || !selectedWallet) return;
     setIsSubmitting(true);
+    setOrderError('');
     try {
-      // Gera uma chave de idempotência única para a transação
-      const idempotencyKey = `idemp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const items = cart.map(({ id, quantity }) => ({ id, quantity }));
+      await axios.put('/api/cart', { items });
+      const latestQuoteResponse = await axios.post<Quote>('/api/checkout/quote', { coupon: appliedCoupon });
+      const latestQuote = latestQuoteResponse.data;
+      if (
+        latestQuote.subtotalETH !== quote.subtotalETH
+        || latestQuote.discountETH !== quote.discountETH
+        || latestQuote.networkFeeETH !== quote.networkFeeETH
+        || latestQuote.totalETH !== quote.totalETH
+      ) {
+        queryClient.setQueryData(['checkout-quote', cartSignature, appliedCoupon], latestQuote);
+        setQuoteChanged(true);
+        setOrderError('O preço, a disponibilidade ou as taxas mudaram. Revise o total e confirme novamente.');
+        return;
+      }
 
-      const response = await axios.post(
+      const orderRequest = {
+        items,
+        walletId: selectedWallet,
+        network,
+        coupon: appliedCoupon,
+        totalETH: latestQuote.totalETH,
+      };
+      const signature = JSON.stringify(orderRequest);
+      if (idempotencyKeyRef.current?.signature !== signature) {
+        const storageKey = `kurio_order_key_${signature}`;
+        const key = sessionStorage.getItem(storageKey) ?? `idemp-${crypto.randomUUID()}`;
+        sessionStorage.setItem(storageKey, key);
+        idempotencyKeyRef.current = { signature, key };
+      }
+
+      const response = await axios.post<{ order: { id: string; status: string } }>(
         '/api/orders',
-        {
-          items: cart.map((item) => item.id),
-          walletId: selectedWallet,
-          network,
-          coupon: appliedCoupon,
-          totalETH: quote?.totalETH,
-        },
-        {
-          headers: {
-            'x-idempotency-key': idempotencyKey,
-          },
-        }
+        orderRequest,
+        { headers: { 'x-idempotency-key': idempotencyKeyRef.current.key } },
       );
-
-      setOrderCompleted(response.data.order.id);
-      clearCart();
-    } catch {
-      alert('Ocorreu um erro ao processar o pedido. Tente novamente.');
+      if (response.data.order.status === 'confirmed') {
+        const storageKey = `kurio_order_key_${signature}`;
+        sessionStorage.removeItem(storageKey);
+        idempotencyKeyRef.current = null;
+        clearCart();
+        void navigate({ to: '/orders/$id', params: { id: response.data.order.id } });
+      } else if (response.data.order.status === 'declined') {
+        sessionStorage.removeItem(`kurio_order_key_${signature}`);
+        idempotencyKeyRef.current = null;
+        setOrderError('Pagamento recusado pela simulação. Os itens continuam no teu carrinho.');
+      } else {
+        setOrderError('O pedido está pendente. Tenta novamente para recuperar o mesmo pedido.');
+      }
+    } catch (error) {
+      if (axios.isAxiosError<{ message?: string }>(error)) {
+        setOrderError(error.response?.data.message ?? 'Falha na comunicação. Tenta novamente com a mesma tentativa.');
+      } else {
+        setOrderError('Falha inesperada ao processar o pedido.');
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  if (orderCompleted) {
-    return (
-      <div className="max-w-xl mx-auto text-center py-16 space-y-6 bg-[#1E1815] border border-[#342A24] rounded-2xl p-8">
-        <div className="w-16 h-16 bg-[#E28743]/20 border border-[#E28743] text-[#E28743] rounded-full flex items-center justify-center mx-auto text-2xl font-bold font-mono">
-          ✓
-        </div>
-        <h2 className="text-3xl font-bold text-white">Aquisição Confirmada!</h2>
-        <p className="text-sm text-[#A19288]">
-          Os teus novos NFTs já foram transferidos para a tua carteira registada.
-        </p>
-        <div className="bg-[#120E0C] border border-[#342A24] rounded-lg p-4 font-mono text-xs text-[#E28743]">
-          ID do Pedido: {orderCompleted}
-        </div>
-        <Link to="/">
-          <Button className="bg-[#E28743] hover:bg-[#c97435] text-[#120E0C] font-bold cursor-pointer mt-4">
-            Voltar ao Marketplace
-          </Button>
-        </Link>
-      </div>
-    );
-  }
 
   if (cart.length === 0) {
     return (
@@ -129,6 +171,17 @@ export function CheckoutPage() {
         <h2 className="text-3xl font-bold text-white tracking-tight">Finalizar Aquisição</h2>
         <p className="text-sm text-[#A19288] mt-1">Configura a tua carteira e a rede para concluir a compra.</p>
       </div>
+      {priceAlert && (
+        <p role="status" aria-live="polite" className="rounded-lg border border-[#E28743] bg-[#E28743]/10 p-3 text-sm text-white">
+          {priceAlert} A cotação será validada novamente antes da compra.
+        </p>
+      )}
+      {orderError && <p role="alert" className="rounded-lg border border-red-800 bg-red-950/50 p-3 text-sm text-red-200">{orderError}</p>}
+      {quoteChanged && (
+        <p role="status" className="rounded-lg border border-[#E28743] p-3 text-sm text-[#E28743]">
+          O resumo foi atualizado. Confirma novamente apenas após revisar o novo total.
+        </p>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Formulário de Configuração */}
@@ -140,16 +193,25 @@ export function CheckoutPage() {
               {wallets?.map((w) => (
                 <label
                   key={w.id}
-                  onClick={() => setSelectedWallet(w.id)}
                   className={`flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${
                     selectedWallet === w.id
                       ? 'border-[#E28743] bg-[#E28743]/10'
                       : 'border-[#342A24] bg-[#120E0C] hover:border-[#A19288]'
                   }`}
                 >
-                  <div className="space-y-1">
-                    <span className="text-white font-semibold text-sm block">{w.name}</span>
-                    <span className="text-xs text-[#A19288] font-mono">{w.address}</span>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="wallet"
+                      value={w.id}
+                      checked={selectedWallet === w.id}
+                      onChange={() => setSelectedWallet(w.id)}
+                      className="accent-[#E28743]"
+                    />
+                    <span className="space-y-1">
+                      <span className="text-white font-semibold text-sm block">{w.name}</span>
+                      <span className="text-xs text-[#A19288] font-mono">{w.address}</span>
+                    </span>
                   </div>
                   <span className="text-xs font-mono font-bold text-[#E28743]">{w.balanceETH} ETH</span>
                 </label>
@@ -167,6 +229,7 @@ export function CheckoutPage() {
                 { id: 'arbitrum', name: 'Arbitrum' },
               ].map((net) => (
                 <button
+                  aria-pressed={network === net.id}
                   key={net.id}
                   type="button"
                   onClick={() => setNetwork(net.id)}
@@ -208,7 +271,7 @@ export function CheckoutPage() {
 
           <div className="space-y-3 font-mono text-sm">
             <div className="flex justify-between text-[#A19288]">
-              <span>Subtotal ({cart.length} NFTs)</span>
+              <span>Subtotal ({cart.reduce((count, item) => count + item.quantity, 0)} NFTs)</span>
               <span className="text-white">{quote?.subtotalETH || subtotalETH} ETH</span>
             </div>
             <div className="flex justify-between text-[#A19288]">
@@ -229,10 +292,10 @@ export function CheckoutPage() {
 
           <Button
             onClick={handleConfirmOrder}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !quote || !selectedWallet || cart.some((item) => item.available < item.quantity)}
             className="w-full bg-[#E28743] hover:bg-[#c97435] text-[#120E0C] font-bold py-3 cursor-pointer"
           >
-            {isSubmitting ? 'A processar na Blockchain...' : 'Confirmar e Pagar'}
+            {isSubmitting ? 'A processar na simulação...' : quoteChanged ? 'Confirmar Novo Total' : 'Confirmar e Pagar'}
           </Button>
         </div>
       </div>
