@@ -220,7 +220,7 @@ function CatalogPage() {
     <div className="space-y-12">
       {/* Alerta de Atualização de Cotação em Tempo Real */}
       {priceAlert && (
-        <div className="bg-[#E28743]/20 border border-[#E28743] text-white p-4 rounded-xl flex items-center justify-between font-mono text-xs animate-pulse">
+        <div role="status" aria-live="polite" className="bg-[#E28743]/20 border border-[#E28743] text-white p-4 rounded-xl flex items-center justify-between font-mono text-xs animate-pulse">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#E28743] animate-ping" />
             <span>{priceAlert}</span>

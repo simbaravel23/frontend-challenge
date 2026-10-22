@@ -26,15 +26,18 @@ export function useNFTRealtime() {
   const [priceAlert, setPriceAlert] = useState<string | null>(null);
 
   useEffect(() => {
+    console.info('[realtime] effect');
     const token = window.localStorage.getItem('kurio_token');
     const socket = io(window.location.origin, {
       path: '/socket.io/',
       transports: ['websocket'],
       auth: { token },
+      forceNew: true,
     });
     const versions = new Map<string, number>();
 
     const onConnect = () => {
+      console.info('[realtime] connected', window.localStorage.getItem('kurio_mock_scenario'));
       void queryClient.invalidateQueries({ queryKey: ['nfts'] });
       void queryClient.invalidateQueries({ queryKey: ['nft'] });
       void queryClient.invalidateQueries({ queryKey: ['cart'] });
@@ -43,6 +46,7 @@ export function useNFTRealtime() {
     };
 
     const onNFTUpdate = (data: NFTUpdatePayload) => {
+      console.info('[realtime] update', data);
       if (window.localStorage.getItem('kurio_token') !== token) return;
       const cachedVersion = queryClient.getQueriesData<CachedNFTResponse>({ queryKey: ['nfts'] })
         .flatMap(([, result]) => result?.data ?? [])
@@ -74,6 +78,8 @@ export function useNFTRealtime() {
 
     socket.on('connect', onConnect);
     socket.on('nft.updated', onNFTUpdate);
+    socket.on('connect_error', (error) => console.error('[realtime] connect error', error.message));
+    socket.on('disconnect', (reason) => console.info('[realtime] disconnect', reason));
     return () => {
       socket.off('connect', onConnect);
       socket.off('nft.updated', onNFTUpdate);
